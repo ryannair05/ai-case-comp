@@ -7,8 +7,6 @@
 .env.development
 .env.test
 .env.testing
-backend/.env*
-!backend/.env.example
 frontend/.env*
 !frontend/.env.local.example
 
@@ -21,25 +19,23 @@ credentials.json
 service-account*.json
 *-service-account.json
 
-# Node
+# Node / Next.js
 node_modules/
 .next/
 frontend/.next/
 frontend/node_modules/
 frontend/out/
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-.pytest_cache/
-.coverage
-htmlcov/
-*.egg-info/
-dist/
-build/
+# Swift / Vapor (backend)
+backend/Packages/
+backend/.build/
+backend/xcuserdata/
+backend/*.xcodeproj/
+backend/DerivedData/
+backend/db.sqlite
+backend/.swiftpm/
+backend/default.profraw
+backend/*.xcworkspace/
 
 # OS
 .DS_Store

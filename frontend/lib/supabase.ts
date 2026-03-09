@@ -1,11 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
+/**
+ * DEPRECATED — Supabase has been replaced by the Vapor backend.
+ * Auth: use /auth/login and /auth/register on the Vapor API.
+ * Data: all stored in SQLite via Fluent on the Vapor backend.
+ *
+ * This file is a no-op stub kept to avoid breaking any stale imports
+ * during the migration period.
+ */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-/** Server-side client with service role (never expose to browser) */
-export function getServiceSupabase() {
-  return createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-}
+export const supabase = null as any;
+export function getServiceSupabase() { return null as any; }

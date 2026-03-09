@@ -1,17 +1,11 @@
 "use client";
 
 /**
- * Signup page.
- * Step 1: supabase.auth.signUp() — creates auth user
- * Step 2: POST /api/auth/create-customer — inserts customers row (service role)
- * Step 3: Redirect to /onboarding
- *
- * Stripe subscription is created post-onboarding, not blocking signup.
+ * Signup page — registers via Vapor backend, gets JWT on success.
  */
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
 
 const TIERS = [
   {
@@ -32,11 +26,12 @@ const TIERS = [
 ];
 
 export default function SignupPage() {
-  const router = useRouter();
+  const { signUp } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tier, setTier] = useState<"starter" | "professional">("professional");
+  const [industry, setIndustry] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -44,75 +39,63 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
-    // Step 1: Create Supabase auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (authError) {
-      setError(authError.message);
+    try {
+      await signUp(name, email, password, tier, industry || undefined);
+    } catch (err: any) {
+      setError(err.message ?? "Registration failed");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const user = authData.user;
-    if (!user) {
-      setError("Signup succeeded but no user returned. Please try logging in.");
-      setLoading(false);
-      return;
-    }
-
-    // Step 2: Insert customers row via server-side API (service role key)
-    const res = await fetch("/api/auth/create-customer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: user.id, name, email, tier }),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to create account profile. Please contact support.");
-      setLoading(false);
-      return;
-    }
-
-    // Step 3: Redirect to onboarding
-    router.push("/onboarding");
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <span className="text-teal-600 font-bold text-2xl">Draftly</span>
-          <p className="text-gray-500 text-sm mt-1">Create your account</p>
+          <p className="text-gray-500 text-sm mt-1">Start your free trial</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
           className="bg-white border border-gray-100 rounded-2xl p-8 space-y-5 shadow-sm"
         >
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Firm / Your name
-            </label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-              placeholder="LionTown Marketing"
-            />
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                placeholder="Jane Smith"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+              <select
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              >
+                <option value="">Select…</option>
+                <option value="marketing_agency">Marketing Agency</option>
+                <option value="consulting">Consulting</option>
+                <option value="legal">Legal</option>
+                <option value="accounting">Accounting</option>
+              </select>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Work email
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               required
@@ -122,11 +105,8 @@ export default function SignupPage() {
               placeholder="you@yourfirm.com"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
               required
@@ -138,62 +118,55 @@ export default function SignupPage() {
             />
           </div>
 
-          {/* Tier picker */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Plan
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {TIERS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTier(t.id as "starter" | "professional")}
-                  className={`border rounded-xl p-3 text-left transition-all ${
-                    tier === t.id
-                      ? "border-teal-500 bg-teal-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <div className="font-semibold text-sm text-gray-900">{t.name}</div>
-                  <div className="text-teal-600 font-bold text-sm">{t.price}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{t.description}</div>
-                  <div
-                    className={`text-xs mt-1 ${
-                      t.highlight ? "text-teal-600 font-medium" : "text-gray-400"
-                    }`}
-                  >
-                    {t.note}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Plan</label>
+            {TIERS.map((t) => (
+              <label
+                key={t.id}
+                className={`flex items-center gap-3 border rounded-xl p-3 cursor-pointer transition-colors ${
+                  tier === t.id
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="tier"
+                  value={t.id}
+                  checked={tier === t.id}
+                  onChange={() => setTier(t.id as any)}
+                  className="accent-teal-600"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-gray-900">{t.name}</span>
+                    <span className="text-sm text-teal-600 font-medium">{t.price}</span>
+                    {t.highlight && (
+                      <span className="text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full">
+                        Recommended
+                      </span>
+                    )}
                   </div>
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Payment set up after onboarding — no card required now.
-            </p>
+                  <div className="text-xs text-gray-400">{t.note}</div>
+                </div>
+              </label>
+            ))}
           </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2 text-sm text-red-600">
-              {error}
-            </div>
-          )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-medium rounded-lg py-2.5 text-sm transition-colors"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50"
           >
             {loading ? "Creating account…" : "Create account"}
           </button>
+          <p className="text-center text-sm text-gray-500">
+            Already have an account?{" "}
+            <Link href="/login" className="text-teal-600 hover:underline">
+              Sign in
+            </Link>
+          </p>
         </form>
-
-        <p className="text-center text-sm text-gray-500 mt-5">
-          Already have an account?{" "}
-          <Link href="/login" className="text-teal-600 hover:underline font-medium">
-            Sign in
-          </Link>
-        </p>
       </div>
     </div>
   );

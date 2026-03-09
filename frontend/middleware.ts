@@ -1,61 +1,34 @@
 /**
  * Edge middleware for route protection.
- * Protected routes redirect to /login if no session.
- * Auth routes redirect to /dashboard if already logged in.
+ * Checks for a JWT token in the Authorization header or draftly_token cookie.
+ * Protected routes redirect to /login if no token is present.
  * /demo is always public (competition screen).
  */
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_ROUTES = ["/dashboard", "/onboarding", "/moat-meter", "/roi-email"];
-const AUTH_ROUTES = ["/login", "/signup"];
+const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/moat-meter", "/roi-email", "/proposals"];
+const AUTH_PREFIXES = ["/login", "/signup"];
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request: { headers: request.headers } });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({ request: { headers: request.headers } });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  // getUser() validates the session server-side (safe, not just cookie read)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r));
-  const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r));
+  // Read JWT from cookie (set on login)
+  const token = request.cookies.get("draftly_token")?.value;
 
-  if (isProtected && !user) {
+  const isProtected = PROTECTED_PREFIXES.some((r) => pathname.startsWith(r));
+  const isAuth = AUTH_PREFIXES.some((r) => pathname.startsWith(r));
+
+  if (isProtected && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (isAuthRoute && user) {
+  if (isAuth && token) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  // Skip static files, images, favicon, and API routes
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|demo).*)"],
 };

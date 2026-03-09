@@ -1,37 +1,32 @@
 /**
- * API client for Draftly backend.
- * All requests include the Supabase JWT for customer_id validation.
+ * API client for Draftly Vapor backend.
+ * All requests include the JWT token from localStorage for customer_id validation.
  */
-import { supabase } from "./supabase";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://api.draftly.ai";
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) {
-    // Redirect gracefully instead of crashing the page
-    if (typeof window !== "undefined") window.location.href = "/login";
-    throw new Error("Not authenticated");
-  }
-  return {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
+function getToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("draftly_token") ?? "";
 }
 
-async function apiRequest<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const headers = await getAuthHeaders();
+async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  if (!token && typeof window !== "undefined") {
+    window.location.href = "/login";
+    throw new Error("Not authenticated");
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: { ...headers, ...(options.headers as Record<string, string> ?? {}) },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string> ?? {}),
+    },
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail ?? "API request failed");
+    throw new Error(error.detail ?? error.error ?? "API request failed");
   }
   return res.json();
 }
@@ -51,6 +46,20 @@ export const proposalsApi = {
   update: (id: string, data: any) =>
     apiRequest<any>(`/proposals/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) => apiRequest<any>(`/proposals/${id}`, { method: "DELETE" }),
+  exportDocx: async (id: string, title: string) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/proposals/${id}/export-docx`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("Export failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "_").toLowerCase()}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -68,24 +77,22 @@ export const contextMapperApi = {
 
 export const ingestApi = {
   uploadPricingCsv: async (file: File) => {
-    const headers = await getAuthHeaders();
-    delete (headers as any)["Content-Type"]; // let browser set multipart boundary
+    const token = getToken();
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch(`${API_BASE}/ingest/pricing-csv`, {
       method: "POST",
-      headers: { Authorization: headers.Authorization },
+      headers: { Authorization: `Bearer ${token}` },
       body: fd,
     });
     if (!res.ok) throw new Error("Upload failed");
     return res.json();
   },
-
   uploadProposalFile: async (
     file: File,
     metadata: { clientName?: string; valueUsd?: number; outcome?: string }
   ) => {
-    const headers = await getAuthHeaders();
+    const token = getToken();
     const fd = new FormData();
     fd.append("file", file);
     if (metadata.clientName) fd.append("client_name", metadata.clientName);
@@ -93,13 +100,12 @@ export const ingestApi = {
     if (metadata.outcome) fd.append("outcome", metadata.outcome);
     const res = await fetch(`${API_BASE}/ingest/proposal-file`, {
       method: "POST",
-      headers: { Authorization: headers.Authorization },
+      headers: { Authorization: `Bearer ${token}` },
       body: fd,
     });
     if (!res.ok) throw new Error("Upload failed");
     return res.json();
   },
-
   jobStatus: (jobId: string) => apiRequest<any>(`/ingest/job/${jobId}`),
 };
 
@@ -129,13 +135,15 @@ export const supportApi = {
 };
 
 // ---------------------------------------------------------------------------
-// Export
+// Export (GDPR)
 // ---------------------------------------------------------------------------
 
 export const exportApi = {
   downloadAll: async () => {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_BASE}/export/full`, { headers });
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/export/full`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!res.ok) throw new Error("Export failed");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -143,5 +151,35 @@ export const exportApi = {
     a.href = url;
     a.download = "draftly-export.zip";
     a.click();
+    URL.revokeObjectURL(url);
   },
+};
+
+// ---------------------------------------------------------------------------
+// GTM Agent (Phase 2)
+// ---------------------------------------------------------------------------
+
+export const gtmApi = {
+  extractMeetingSignals: (rawNotes: string, clientName: string) =>
+    apiRequest<any>("/gtm/meeting-signals", {
+      method: "POST",
+      body: JSON.stringify({ raw_notes: rawNotes, client_name: clientName }),
+    }),
+  generateOutreachSequence: (
+    prospectName: string,
+    prospectCompany: string,
+    prospectIndustry: string,
+    painPoint: string,
+    sequenceLength?: number
+  ) =>
+    apiRequest<any[]>("/gtm/outreach-sequence", {
+      method: "POST",
+      body: JSON.stringify({
+        prospect_name: prospectName,
+        prospect_company: prospectCompany,
+        prospect_industry: prospectIndustry,
+        pain_point: painPoint,
+        sequence_length: sequenceLength,
+      }),
+    }),
 };
