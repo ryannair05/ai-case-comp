@@ -1,0 +1,54 @@
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+.env.test
+.env.testing
+backend/.env*
+!backend/.env.example
+frontend/.env*
+!frontend/.env.local.example
+
+# Secrets / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+*-service-account.json
+
+# Node
+node_modules/
+.next/
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Temp lock files
+~$*
