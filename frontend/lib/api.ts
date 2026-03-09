@@ -51,6 +51,18 @@ export const proposalsApi = {
   update: (id: string, data: any) =>
     apiRequest<any>(`/proposals/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) => apiRequest<any>(`/proposals/${id}`, { method: "DELETE" }),
+  exportDocx: async (id: string) => {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_BASE}/export/proposals/${id}/docx`, { headers });
+    if (!res.ok) throw new Error("DOCX export failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `proposal-${id.slice(0, 8)}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -144,4 +156,28 @@ export const exportApi = {
     a.download = "draftly-export.zip";
     a.click();
   },
+};
+
+// ---------------------------------------------------------------------------
+// GTM Agent (Phase 2)
+// ---------------------------------------------------------------------------
+
+export const gtmApi = {
+  analyzeMeeting: (clientName: string, rawNotes: string) =>
+    apiRequest<any>("/gtm/meeting-signals", {
+      method: "POST",
+      body: JSON.stringify({ client_name: clientName, raw_notes: rawNotes }),
+    }),
+  buildOutreach: (data: {
+    prospect_name: string;
+    prospect_company: string;
+    prospect_industry: string;
+    pain_point: string;
+    sequence_length?: number;
+  }) =>
+    apiRequest<any>("/gtm/outreach-sequence", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  pipeline: () => apiRequest<any>("/gtm/pipeline"),
 };

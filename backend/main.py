@@ -16,6 +16,7 @@ from routers import (
     context_mapper,
     crm,
     export,
+    gtm,
     ingest,
     proposals,
     support,
@@ -58,6 +59,7 @@ app.include_router(churn.router)
 app.include_router(crm.router)
 app.include_router(analytics.router)
 app.include_router(export.router)
+app.include_router(gtm.router)
 
 
 # ---------------------------------------------------------------------------

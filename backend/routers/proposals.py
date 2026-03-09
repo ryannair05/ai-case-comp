@@ -120,6 +120,7 @@ async def generate_proposal(
         customer_id=str(customer.id),
         rfp_text=payload.rfp_text,
         proposals_indexed=customer.proposals_indexed,
+        industry=customer.industry or "consulting",
     )
 
     # Persist the generated proposal

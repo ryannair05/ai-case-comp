@@ -63,7 +63,10 @@ export default function DashboardPage() {
         <span className="text-teal-600 font-bold text-xl">Draftly</span>
         <div className="flex gap-6 text-sm text-gray-500">
           <Link href="/dashboard" className="text-teal-600 font-medium">Dashboard</Link>
+          <Link href="/proposals">Proposals</Link>
           <Link href="/moat-meter">Moat Meter</Link>
+          <Link href="/gtm">GTM Agent</Link>
+          <Link href="/pipeline">Pipeline</Link>
           <Link href="/onboarding">Upload</Link>
           <Link href="/roi-email">ROI Report</Link>
           <Link href="/demo">Demo</Link>

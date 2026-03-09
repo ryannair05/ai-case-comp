@@ -8,13 +8,84 @@ import io
 import json
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+import docx
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from models.schemas import get_current_customer, get_supabase
 from services.pinecone_client import delete_customer_data
 
 router = APIRouter(prefix="/export", tags=["export"])
+
+
+# ---------------------------------------------------------------------------
+# DOCX export for a single proposal
+# ---------------------------------------------------------------------------
+
+@router.get("/proposals/{proposal_id}/docx")
+async def export_proposal_docx(
+    proposal_id: str,
+    customer=Depends(get_current_customer),
+):
+    """
+    Download a single proposal as a formatted Word (.docx) document.
+    Customer owns their content — export is always available.
+    """
+    supabase = get_supabase()
+    result = (
+        supabase.table("proposals")
+        .select("*")
+        .eq("id", proposal_id)
+        .eq("customer_id", str(customer.id))
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    proposal = result.data
+    document = docx.Document()
+
+    # Title
+    title = proposal.get("title") or f"Proposal — {proposal.get('client_name', 'Client')}"
+    document.add_heading(title, level=0)
+
+    # Meta block
+    meta_lines = []
+    if proposal.get("client_name"):
+        meta_lines.append(f"Client: {proposal['client_name']}")
+    if proposal.get("value_usd"):
+        meta_lines.append(f"Value: ${proposal['value_usd']:,.0f}")
+    if proposal.get("created_at"):
+        meta_lines.append(f"Date: {proposal['created_at'][:10]}")
+    if meta_lines:
+        document.add_paragraph("\n".join(meta_lines)).italic = True
+
+    document.add_paragraph("")  # spacer
+
+    # Body — split on double-newline to preserve section breaks
+    for paragraph in proposal.get("content", "").split("\n\n"):
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+        # Treat lines starting with '#' as section headings
+        if paragraph.startswith("#"):
+            heading_text = paragraph.lstrip("#").strip()
+            document.add_heading(heading_text, level=2)
+        else:
+            document.add_paragraph(paragraph)
+
+    buf = io.BytesIO()
+    document.save(buf)
+    buf.seek(0)
+
+    safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in title)[:60]
+    filename = f"{safe_title}.docx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------

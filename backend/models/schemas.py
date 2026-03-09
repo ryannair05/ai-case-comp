@@ -265,3 +265,58 @@ class PhaseGateStatus(BaseModel):
     gate2: PhaseGateCondition
     gate3: PhaseGateCondition
     all_passed: bool
+
+
+# ---------------------------------------------------------------------------
+# GTM Agent (Phase 2)
+# ---------------------------------------------------------------------------
+
+class MeetingSignalsRequest(BaseModel):
+    client_name: str
+    raw_notes: str = Field(..., min_length=20, description="Raw meeting notes to analyse")
+
+
+class MeetingSignalsResponse(BaseModel):
+    budget_signals: list[str] = []
+    needs_identified: list[str] = []
+    objections: list[str] = []
+    deal_stage: str = "discovery"  # discovery|proposal|negotiation|closed_won|closed_lost
+    next_actions: list[str] = []
+    proposal_recommended: bool = False
+
+
+class OutreachEmail(BaseModel):
+    subject: str
+    body: str
+    send_day: int
+    cta: str
+
+
+class OutreachSequenceRequest(BaseModel):
+    prospect_name: str
+    prospect_company: str
+    prospect_industry: str
+    pain_point: str
+    sequence_length: int = Field(default=4, ge=1, le=8)
+
+
+class OutreachSequenceResponse(BaseModel):
+    sequence: list[OutreachEmail]
+    ai_disclosure: str = (
+        "This outreach sequence was drafted with AI assistance (Draftly / Claude Sonnet 4.6). "
+        "Please review and personalise before sending."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pipeline / Deal velocity
+# ---------------------------------------------------------------------------
+
+class PipelineDeal(BaseModel):
+    proposal_id: str
+    client_name: Optional[str] = None
+    value_usd: Optional[float] = None
+    outcome: Optional[str] = None  # won | lost | pending
+    deal_stage: Optional[str] = None
+    days_open: Optional[int] = None
+    created_at: Optional[datetime] = None

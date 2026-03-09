@@ -174,17 +174,18 @@ async def generate_proposal_with_rag(
     customer_id: str,
     rfp_text: str,
     proposals_indexed: int,
+    industry: str = "consulting",
 ) -> str:
     """
     Full RAG pipeline: retrieve context → generate proposal with Claude.
     Automatically switches to cold-start mode when < 15 proposals indexed.
+    Industry is used to select the appropriate cold-start template.
     """
     from services.cold_start import COLD_START_THRESHOLD, get_cold_start_context
 
     if proposals_indexed < COLD_START_THRESHOLD:
         # Use industry template library for cold-start customers
-        # customer industry needs to come from caller
-        context_chunks = []
+        context_chunks = await get_cold_start_context(customer_id, industry)
         result = await generate_with_context(
             customer_id=customer_id,
             rfp_text=rfp_text,
