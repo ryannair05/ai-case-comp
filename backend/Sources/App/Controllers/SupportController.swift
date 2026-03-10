@@ -1,6 +1,6 @@
-import Vapor
 import Fluent
 import Foundation
+import Vapor
 
 /// Support ticket AI triage — severity classification + auto-response.
 /// Target: 80% of tickets get AI first-response in < 5 minutes.
@@ -27,19 +27,33 @@ struct SupportController {
 
         // ChatGPT mention detector — flag if customer is considering a switch
         let bodyLower = body.body.lowercased()
-        let switchSignals = ["chatgpt", "openai", "gemini", "gpt-4", "switching", "cancel", "leaving"]
+        let switchSignals = [
+            "chatgpt", "openai", "gemini", "gpt-4", "switching", "cancel", "leaving",
+        ]
         let mentionsCompetitor = switchSignals.contains { bodyLower.contains($0) }
+
+        // Fire Slack webhook for competitor mentions (non-blocking, best-effort)
         if mentionsCompetitor {
-            ticket.severity = "high"
-            // In production: fire Slack webhook / email to Hayden
+            if let webhookURL = ProcessInfo.processInfo.environment["SLACK_WEBHOOK_URL"],
+                !webhookURL.isEmpty
+            {
+                let slackMsg =
+                    "🚨 Competitor mention from \(customer.name) (\(customer.tier)): \"\(body.body.prefix(200))...\""
+                Task.detached {
+                    _ = try? await req.client.post(URI(string: webhookURL)) { slackReq in
+                        try slackReq.content.encode(["text": slackMsg])
+                    }
+                }
+            }
         }
 
-        // Async AI triage
+        // Async AI triage — competitor check runs AFTER AI classification to avoid race condition
         Task.detached { [db = req.db] in
             do {
-                // Classify severity
-                let severity = try await ClaudeService.shared.classifySeverity(body.body)
-                ticket.severity = severity.lowercased()
+                // Classify severity with AI first
+                let aiSeverity = try await ClaudeService.shared.classifySeverity(body.body)
+                // Competitor mention always escalates to high, regardless of AI classification
+                ticket.severity = mentionsCompetitor ? "high" : aiSeverity.lowercased()
 
                 // Retrieve KB context for deflection
                 let kbChunks = try await LocalVectorStore.shared.queryKB(

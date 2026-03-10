@@ -1,5 +1,5 @@
-import Vapor
 import Fluent
+import Vapor
 
 /// Proposal CRUD, AI generation, DOCX export, and win/loss tracking.
 struct ProposalController {
@@ -15,7 +15,7 @@ struct ProposalController {
         enum CodingKeys: String, CodingKey {
             case title, content
             case clientName = "client_name"
-            case valueUsd   = "value_usd"
+            case valueUsd = "value_usd"
             case outcome
         }
     }
@@ -25,9 +25,9 @@ struct ProposalController {
         let clientName: String?
         let valueUsd: Double?
         enum CodingKeys: String, CodingKey {
-            case rfpText    = "rfp_text"
+            case rfpText = "rfp_text"
             case clientName = "client_name"
-            case valueUsd   = "value_usd"
+            case valueUsd = "value_usd"
         }
     }
 
@@ -42,8 +42,8 @@ struct ProposalController {
         enum CodingKeys: String, CodingKey {
             case title, content, outcome
             case clientName = "client_name"
-            case valueUsd   = "value_usd"
-            case winReason  = "win_reason"
+            case valueUsd = "value_usd"
+            case winReason = "win_reason"
             case loseReason = "lose_reason"
         }
     }
@@ -66,10 +66,12 @@ struct ProposalController {
     @Sendable
     func get(_ req: Request) async throws -> Proposal {
         let customer = try await req.authenticatedCustomer()
-        guard let proposal = try await Proposal.query(on: req.db)
-            .filter(\.$customerId == customer.id!)
-            .filter(\.$id == req.parameters.require("id", as: UUID.self))
-            .first() else {
+        guard
+            let proposal = try await Proposal.query(on: req.db)
+                .filter(\.$customerId == customer.id!)
+                .filter(\.$id == req.parameters.require("id", as: UUID.self))
+                .first()
+        else {
             throw Abort(.notFound, reason: "Proposal not found")
         }
         return proposal
@@ -109,25 +111,19 @@ struct ProposalController {
     func generate(_ req: Request) async throws -> Response {
         let customer = try await req.authenticatedCustomer()
         guard customer.tier != "starter" else {
-            throw Abort(.forbidden, reason: "Context-Mapper requires Professional tier ($249/mo). Upgrade to unlock.")
+            throw Abort(
+                .forbidden,
+                reason: "Context-Mapper requires Professional tier ($249/mo). Upgrade to unlock.")
         }
         let body = try req.content.decode(GenerateRequest.self)
         guard body.rfpText.count >= 50 else {
             throw Abort(.badRequest, reason: "rfp_text must be at least 50 characters")
         }
 
-        let content = try await RAGPipeline.shared.generateProposal(
-            customerId: customer.id!.uuidString,
-            rfpText: body.rfpText,
-            proposalsIndexed: customer.proposalsIndexed,
-            industry: customer.industry,
-            db: req.db
-        )
-
         let proposal = Proposal(
             customerId: customer.id!,
             title: "Generated Proposal",
-            content: content,
+            content: "",  // Will be updated after stream completes
             clientName: body.clientName,
             valueUsd: body.valueUsd,
             outcome: "pending"
@@ -139,21 +135,60 @@ struct ProposalController {
         if customer.proposalsIndexed >= 15 { customer.contextMapperActive = true }
         try await customer.save(on: req.db)
 
-        Task.detached {
-            try? await RAGPipeline.shared.ingestProposal(
-                customerId: customer.id!.uuidString,
-                proposalId: proposal.id?.uuidString ?? UUID().uuidString,
-                text: content,
-                metadata: ["title": "Generated Proposal", "client_name": body.clientName ?? ""],
-                db: req.db
-            )
-        }
+        let stream = try await RAGPipeline.shared.generateProposalStream(
+            customerId: customer.id!.uuidString,
+            rfpText: body.rfpText,
+            proposalsIndexed: customer.proposalsIndexed,
+            industry: customer.industry,
+            db: req.db
+        )
 
-        let result: [String: Any] = [
-            "proposal_id": proposal.id?.uuidString ?? "",
-            "content": content,
-        ]
-        return try await result.encodeResponse(for: req)
+        let response = Response(status: .ok)
+        response.headers.contentType = HTTPMediaType(type: "text", subType: "event-stream")
+        response.headers.add(name: "Cache-Control", value: "no-cache")
+        response.headers.add(name: "Connection", value: "keep-alive")
+
+        response.body = .init(stream: { writer in
+            Task {
+                [
+                    db = req.db, custId = customer.id!.uuidString, propId = proposal.id!.uuidString,
+                    name = body.clientName
+                ] in
+                var fullContent = ""
+                do {
+                    for try await chunk in stream {
+                        fullContent += chunk
+                        // Format as SSE
+                        let sse = "data: \(chunk)\n\n"
+                        if let buffer = sse.data(using: .utf8) {
+                            let byteBuffer = ByteBuffer(data: buffer)
+                            _ = writer.write(.buffer(byteBuffer))
+                        }
+                    }
+                    _ = writer.write(.end)
+
+                    // Stream finished: update DB and ingest in the background
+                    Task.detached {
+                        if let existing = try? await Proposal.find(UUID(uuidString: propId), on: db)
+                        {
+                            existing.content = fullContent
+                            try? await existing.save(on: db)
+                        }
+                        try? await RAGPipeline.shared.ingestProposal(
+                            customerId: custId,
+                            proposalId: propId,
+                            text: fullContent,
+                            metadata: ["title": "Generated Proposal", "client_name": name ?? ""],
+                            db: db
+                        )
+                    }
+                } catch {
+                    db.logger.error("Proposal stream error: \(error)")
+                    _ = writer.write(.end)
+                }
+            }
+        })
+        return response
     }
 
     // MARK: - Update (including win/loss)
@@ -162,19 +197,21 @@ struct ProposalController {
     func update(_ req: Request) async throws -> Proposal {
         let customer = try await req.authenticatedCustomer()
         let body = try req.content.decode(UpdateRequest.self)
-        guard let proposal = try await Proposal.query(on: req.db)
-            .filter(\.$customerId == customer.id!)
-            .filter(\.$id == req.parameters.require("id", as: UUID.self))
-            .first() else {
+        guard
+            let proposal = try await Proposal.query(on: req.db)
+                .filter(\.$customerId == customer.id!)
+                .filter(\.$id == req.parameters.require("id", as: UUID.self))
+                .first()
+        else {
             throw Abort(.notFound, reason: "Proposal not found")
         }
 
-        if let t = body.title      { proposal.title      = t }
-        if let c = body.content    { proposal.content    = c }
+        if let t = body.title { proposal.title = t }
+        if let c = body.content { proposal.content = c }
         if let n = body.clientName { proposal.clientName = n }
-        if let v = body.valueUsd   { proposal.valueUsd   = v }
-        if let o = body.outcome    { proposal.outcome    = o }
-        if let w = body.winReason  { proposal.winReason  = w }
+        if let v = body.valueUsd { proposal.valueUsd = v }
+        if let o = body.outcome { proposal.outcome = o }
+        if let w = body.winReason { proposal.winReason = w }
         if let l = body.loseReason { proposal.loseReason = l }
         try await proposal.save(on: req.db)
 
@@ -182,11 +219,22 @@ struct ProposalController {
         if body.outcome == "won" {
             let content = proposal.content
             let winReason = body.winReason ?? ""
-            Task.detached {
-                _ = try? await ClaudeService.shared.extractWinPatterns(
+            let custId = customer.id!.uuidString
+            let propId = proposal.id!.uuidString
+            Task.detached { [db = req.db] in
+                let p = try? await ClaudeService.shared.extractWinPatterns(
                     proposalContent: content,
                     winReason: winReason
                 )
+                if let p = p {
+                    try? await RAGPipeline.shared.ingestProposal(
+                        customerId: custId,
+                        proposalId: UUID().uuidString,
+                        text: p,
+                        metadata: ["entry_type": "win_pattern", "source_proposal": propId],
+                        db: db
+                    )
+                }
             }
         }
         return proposal
@@ -197,10 +245,12 @@ struct ProposalController {
     @Sendable
     func delete(_ req: Request) async throws -> [String: String] {
         let customer = try await req.authenticatedCustomer()
-        guard let proposal = try await Proposal.query(on: req.db)
-            .filter(\.$customerId == customer.id!)
-            .filter(\.$id == req.parameters.require("id", as: UUID.self))
-            .first() else {
+        guard
+            let proposal = try await Proposal.query(on: req.db)
+                .filter(\.$customerId == customer.id!)
+                .filter(\.$id == req.parameters.require("id", as: UUID.self))
+                .first()
+        else {
             throw Abort(.notFound, reason: "Proposal not found")
         }
         proposal.deletedAt = Date()
@@ -213,10 +263,12 @@ struct ProposalController {
     @Sendable
     func exportDocx(_ req: Request) async throws -> Response {
         let customer = try await req.authenticatedCustomer()
-        guard let proposal = try await Proposal.query(on: req.db)
-            .filter(\.$customerId == customer.id!)
-            .filter(\.$id == req.parameters.require("id", as: UUID.self))
-            .first() else {
+        guard
+            let proposal = try await Proposal.query(on: req.db)
+                .filter(\.$customerId == customer.id!)
+                .filter(\.$id == req.parameters.require("id", as: UUID.self))
+                .first()
+        else {
             throw Abort(.notFound, reason: "Proposal not found")
         }
 
@@ -231,9 +283,11 @@ struct ProposalController {
             .lowercased()
 
         var headers = HTTPHeaders()
-        headers.add(name: .contentType,        value: "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        headers.add(
+            name: .contentType,
+            value: "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         headers.add(name: .contentDisposition, value: "attachment; filename=\"\(safeName).docx\"")
-        headers.add(name: .contentLength,      value: "\(docxData.count)")
+        headers.add(name: .contentLength, value: "\(docxData.count)")
 
         return Response(status: .ok, headers: headers, body: .init(data: docxData))
     }

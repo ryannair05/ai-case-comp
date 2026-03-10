@@ -7,12 +7,12 @@ jobs:
   # Backend (Swift Vapor + SQLite)
   # ---------------------------------------------------------------------------
   test-backend:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
       - name: Select Xcode (Swift 6)
-        run: sudo xcode-select -s /Applications/Xcode_16.app
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app
 
       - name: Cache Swift packages
         uses: actions/cache@v4
@@ -26,6 +26,9 @@ jobs:
 
       - name: Build
         run: cd backend && swift build
+
+      - name: Install poppler (pdftotext for PDF extraction tests)
+        run: brew install poppler
 
       - name: Run tests
         run: cd backend && swift test
@@ -58,3 +61,6 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://api.draftly.ai
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+          OPENAI_API_KEY: ""
+          ANTHROPIC_API_KEY: ""
+          DEMO_JWT_TOKEN: ""

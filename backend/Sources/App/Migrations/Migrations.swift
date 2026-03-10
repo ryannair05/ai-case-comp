@@ -19,6 +19,8 @@ struct CreateCustomer: AsyncMigration {
             .field("hubspot_token", .string)
             .field("onboarded_at", .datetime)
             .field("created_at", .datetime)
+            .field("pipedrive_api_key", .string)
+            .field("onboarding_step_completed", .int, .required, .sql(.default(0)))
             .unique(on: "email")
             .create()
     }

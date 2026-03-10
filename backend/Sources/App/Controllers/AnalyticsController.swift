@@ -23,9 +23,9 @@ struct AnalyticsController {
         let avgSwitchingCost = Double(customers.map { calculateSwitchingCost(customer: $0)["total_cost"] as? Int ?? 0 }.reduce(0, +))
             / max(1, Double(customers.count))
 
-        // AI cost per proposal (~$0.12 based on Claude Sonnet pricing)
+        // AI cost per proposal (~$0.18 based on Claude Sonnet pricing)
         _ = customers.reduce(0) { $0 + $1.proposalsIndexed }
-        let aiCostPerProposal: Double = 0.12
+        let aiCostPerProposal: Double = 0.18
 
         let scenario: String
         switch churnRate {

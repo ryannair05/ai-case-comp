@@ -84,13 +84,12 @@ export default function DashboardPage() {
             <div className="text-xs text-gray-400">
               Scenario:{" "}
               <span
-                className={`font-medium ${
-                  unitEcon?.on_track_for === "bull"
+                className={`font-medium ${unitEcon?.on_track_for === "bull"
                     ? "text-amber-500"
                     : unitEcon?.on_track_for === "base"
-                    ? "text-teal-500"
-                    : "text-red-500"
-                }`}
+                      ? "text-teal-500"
+                      : "text-red-500"
+                  }`}
               >
                 {unitEcon?.on_track_for?.toUpperCase() ?? "—"} CASE
               </span>
@@ -155,9 +154,8 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      cmStatus.context_mapper_active ? "bg-teal-500" : "bg-gray-300"
-                    }`}
+                    className={`w-2 h-2 rounded-full ${cmStatus.context_mapper_active ? "bg-teal-500" : "bg-gray-300"
+                      }`}
                   />
                   <span className="text-sm text-gray-600">
                     {cmStatus.context_mapper_active ? "Active" : "Inactive"}
@@ -196,9 +194,8 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900">Phase 1 → 2 Gate</h3>
               <span
-                className={`text-xs px-2 py-1 rounded-full font-medium ${
-                  phaseGate.all_passed ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-                }`}
+                className={`text-xs px-2 py-1 rounded-full font-medium ${phaseGate.all_passed ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                  }`}
               >
                 {phaseGate.all_passed ? "GTM Agent Unlocked" : "Phase 1 in progress"}
               </span>
@@ -242,21 +239,55 @@ export default function DashboardPage() {
                     <div className="font-medium text-gray-900 text-sm">{p.title || "Untitled"}</div>
                     <div className="text-xs text-gray-400">{p.client_name || "—"}</div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {p.value_usd && (
                       <span className="text-sm text-gray-700">${p.value_usd.toLocaleString()}</span>
                     )}
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        p.outcome === "won"
-                          ? "bg-green-100 text-green-700"
-                          : p.outcome === "lost"
-                          ? "bg-red-100 text-red-500"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {p.outcome ?? "pending"}
-                    </span>
+                    {p.outcome === "pending" ? (
+                      <>
+                        <button
+                          onClick={async () => {
+                            const reason = prompt("What helped you win this deal?");
+                            if (reason === null) return;
+                            try {
+                              await proposalsApi.update(p.id, { outcome: "won", win_reason: reason });
+                              setProposals((prev) =>
+                                prev.map((x) => (x.id === p.id ? { ...x, outcome: "won" } : x))
+                              );
+                            } catch (e) { console.error(e); }
+                          }}
+                          className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors"
+                        >
+                          Won ✓
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const reason = prompt("Why was this deal lost?");
+                            if (reason === null) return;
+                            try {
+                              await proposalsApi.update(p.id, { outcome: "lost", lose_reason: reason });
+                              setProposals((prev) =>
+                                prev.map((x) => (x.id === p.id ? { ...x, outcome: "lost" } : x))
+                              );
+                            } catch (e) { console.error(e); }
+                          }}
+                          className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-500 hover:bg-red-200 font-medium transition-colors"
+                        >
+                          Lost ✗
+                        </button>
+                      </>
+                    ) : (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${p.outcome === "won"
+                            ? "bg-green-100 text-green-700"
+                            : p.outcome === "lost"
+                              ? "bg-red-100 text-red-500"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                      >
+                        {p.outcome ?? "pending"}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

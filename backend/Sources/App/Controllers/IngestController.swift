@@ -1,6 +1,6 @@
-import Vapor
 import Fluent
 import Foundation
+import Vapor
 
 /// Ingest controller — handles file, CSV, and brand-voice ingestion.
 /// All heavy processing runs in a background Task (never blocks HTTP response).
@@ -88,17 +88,27 @@ struct IngestController {
         let proposalId = UUID().uuidString
         let metadata: [String: Any] = [
             "client_name": body.clientName ?? "",
-            "value_usd":   body.valueUsd ?? 0,
-            "outcome":     body.outcome ?? "pending",
-            "title":       body.filename ?? "Uploaded proposal",
+            "value_usd": body.valueUsd ?? 0,
+            "outcome": body.outcome ?? "pending",
+            "title": body.filename ?? "Uploaded proposal",
         ]
 
         Task.detached { [db = req.db] in
             do {
-                // Extract text from uploaded bytes (plain text fallback)
-                let text = String(data: fileData, encoding: .utf8)
-                    ?? String(data: fileData, encoding: .isoLatin1)
-                    ?? "[Binary file — text extraction not available]"
+                // Extract text from uploaded bytes
+                let text: String
+                let isPDF =
+                    (body.filename?.lowercased().hasSuffix(".pdf") ?? false)
+                    || fileData.prefix(5) == Data("%PDF-".utf8)
+
+                if isPDF {
+                    text = Self.extractPDFText(from: fileData)
+                } else {
+                    text =
+                        String(data: fileData, encoding: .utf8)
+                        ?? String(data: fileData, encoding: .isoLatin1)
+                        ?? "[Binary file — text extraction not available]"
+                }
 
                 _ = try await RAGPipeline.shared.ingestProposal(
                     customerId: customer.id!.uuidString,
@@ -129,10 +139,12 @@ struct IngestController {
     func reindexProposal(_ req: Request) async throws -> IngestJobResponse {
         let customer = try await req.authenticatedCustomer()
         let proposalId = try req.parameters.require("id", as: UUID.self)
-        guard let proposal = try await Proposal.query(on: req.db)
-            .filter(\.$customerId == customer.id!)
-            .filter(\.$id == proposalId)
-            .first() else {
+        guard
+            let proposal = try await Proposal.query(on: req.db)
+                .filter(\.$customerId == customer.id!)
+                .filter(\.$id == proposalId)
+                .first()
+        else {
             throw Abort(.notFound, reason: "Proposal not found")
         }
 
@@ -200,8 +212,9 @@ struct IngestController {
     func jobStatus(_ req: Request) async throws -> JobRecord {
         let customer = try await req.authenticatedCustomer()
         guard let jobId = UUID(uuidString: try req.parameters.require("jobId")),
-              let job = try await JobRecord.find(jobId, on: req.db),
-              job.customerId == customer.id!.uuidString else {
+            let job = try await JobRecord.find(jobId, on: req.db),
+            job.customerId == customer.id!.uuidString
+        else {
             throw Abort(.notFound, reason: "Job not found")
         }
         return job
@@ -212,21 +225,128 @@ struct IngestController {
     private func parseCSV(_ csv: String) throws -> [PricingRow] {
         let lines = csv.components(separatedBy: "\n").filter { !$0.isEmpty }
         guard let header = lines.first else { return [] }
-        let keys = header.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let keys = header.components(separatedBy: ",").map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
 
         return lines.dropFirst().compactMap { line -> PricingRow? in
-            let vals = line.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            let vals = line.components(separatedBy: ",").map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
             guard vals.count >= 2 else { return nil }
             func field(_ k: String) -> String? {
                 guard let i = keys.firstIndex(of: k), i < vals.count else { return nil }
                 return vals[i].isEmpty ? nil : vals[i]
             }
             guard let svcType = field("service_type"), let priceStr = field("price_usd"),
-                  let price = Double(priceStr) else { return nil }
+                let price = Double(priceStr)
+            else { return nil }
             let wonStr = field("won")?.lowercased()
             let won: Bool? = wonStr.map { ["true", "1", "yes"].contains($0) }
-            return PricingRow(serviceType: svcType, priceUsd: price, won: won, notes: field("notes"))
+            return PricingRow(
+                serviceType: svcType, priceUsd: price, won: won, notes: field("notes"))
         }
+    }
+
+    // MARK: - PDF text extraction via pdftotext (poppler-utils)
+
+    /// Extract text from PDF data using the `pdftotext` command-line tool.
+    /// Requires `poppler-utils` installed (`brew install poppler` on macOS,
+    /// `apt install poppler-utils` in Docker).
+    /// Falls back to stripping non-printable bytes if pdftotext is unavailable.
+    static func extractPDFText(from data: Data) -> String {
+        let tempDir = FileManager.default.temporaryDirectory
+        let pdfPath = tempDir.appendingPathComponent(UUID().uuidString + ".pdf")
+        let txtPath = tempDir.appendingPathComponent(UUID().uuidString + ".txt")
+
+        defer {
+            try? FileManager.default.removeItem(at: pdfPath)
+            try? FileManager.default.removeItem(at: txtPath)
+        }
+
+        do {
+            try data.write(to: pdfPath)
+        } catch {
+            return Self.fallbackExtractText(from: data)
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["pdftotext", "-layout", pdfPath.path, txtPath.path]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return Self.fallbackExtractText(from: data)
+        }
+
+        guard process.terminationStatus == 0,
+            let result = try? String(contentsOf: txtPath, encoding: .utf8),
+            !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return Self.fallbackExtractText(from: data)
+        }
+
+        return result
+    }
+
+    /// Fallback: strip non-printable bytes and extract readable substrings.
+    private static func fallbackExtractText(from data: Data) -> String {
+        let ascii = data.compactMap { byte -> Character? in
+            guard byte < 128 else { return nil }
+            let scalar = Unicode.Scalar(byte)
+            return
+                (scalar.properties.isASCIIHexDigit || CharacterSet.alphanumerics.contains(scalar)
+                || CharacterSet.whitespaces.contains(scalar)
+                || CharacterSet.punctuationCharacters.contains(scalar))
+                ? Character(scalar) : nil
+        }
+        let text = String(ascii)
+        return text.isEmpty ? "[PDF text extraction failed — install poppler-utils]" : text
+    }
+
+    // MARK: - KB article ingestion (for Support AI context)
+
+    struct KBArticleRequest: Content {
+        let title: String
+        let body: String
+    }
+
+    @Sendable
+    func kbArticle(_ req: Request) async throws -> IngestJobResponse {
+        // Simple admin-key gating
+        let adminKey = ProcessInfo.processInfo.environment["ADMIN_API_KEY"] ?? ""
+        guard let provided = req.headers.first(name: "X-Admin-Key"),
+            !adminKey.isEmpty, provided == adminKey
+        else {
+            throw Abort(.forbidden, reason: "Admin API key required")
+        }
+
+        let body = try req.content.decode(KBArticleRequest.self)
+        let job = JobRecord(jobType: "ingest_kb", customerId: "kb")
+        try await job.save(on: req.db)
+        let jobId = job.id!.uuidString
+
+        Task.detached { [db = req.db] in
+            let text = "## \(body.title)\n\n\(body.body)"
+            try? await LocalVectorStore.shared.upsert(
+                customerId: "kb",
+                entryType: "kb_article",
+                texts: [text],
+                metadatas: [["title": body.title, "type": "kb_article"]],
+                db: db
+            )
+            if let job = try? await JobRecord.find(UUID(uuidString: jobId), on: db) {
+                job.status = "completed"
+                job.completedAt = Date()
+                try? await job.save(on: db)
+            }
+        }
+
+        return IngestJobResponse(jobId: jobId, rowsQueued: 1, status: "queued")
     }
 }
 
@@ -241,7 +361,7 @@ struct ProposalFileRequest: Content {
     enum CodingKeys: String, CodingKey {
         case file, filename
         case clientName = "client_name"
-        case valueUsd   = "value_usd"
+        case valueUsd = "value_usd"
         case outcome
     }
 }
@@ -252,7 +372,7 @@ struct BrandVoiceRequest: Content {
     let toneTags: String?
     enum CodingKeys: String, CodingKey {
         case exampleText = "example_text"
-        case styleNotes  = "style_notes"
-        case toneTags    = "tone_tags"
+        case styleNotes = "style_notes"
+        case toneTags = "tone_tags"
     }
 }

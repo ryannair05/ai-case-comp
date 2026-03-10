@@ -9,20 +9,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        teal: {
-          400: "#00BFA5",
-          500: "#00897B",
-          600: "#00796B",
-          700: "#00695C",
-          900: "#004D40",
-          950: "#002921",
+        ink: {
+          DEFAULT: "#0A0A0F",
+          1: "#111118",
+          2: "#1A1A24",
+          3: "#242432",
         },
-        brand: {
-          navy: "#0B1929",
-          teal: "#00BFA5",
-          amber: "#FFB300",
+        bone: {
+          DEFAULT: "#F0EDE6",
+          dim: "#9B9790",
+          faint: "#3A3A48",
+        },
+        amber: {
+          DEFAULT: "#E8C547",
+          dim: "rgba(232,197,71,0.15)",
+          glow: "rgba(232,197,71,0.08)",
+        },
+        jade: {
+          DEFAULT: "#4EC994",
+          dim: "rgba(78,201,148,0.15)",
+        },
+        red: {
+          dim: "#C44D4D",
+          faint: "rgba(196,77,77,0.12)",
         },
       },
+      backgroundImage: {
+        'gradient-premium': 'linear-gradient(to bottom, #0A0A0F, #111118)',
+      }
     },
   },
   plugins: [],

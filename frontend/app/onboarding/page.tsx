@@ -7,7 +7,7 @@
  */
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { ingestApi } from "@/lib/api";
+import { ingestApi, contextMapperApi } from "@/lib/api";
 
 const STEPS = [
   {
@@ -118,13 +118,14 @@ export default function OnboardingPage() {
   async function submitBrandVoice() {
     setUploading(true);
     try {
-      const exampleText = Object.entries(brandVoice)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join("\n");
-      await ingestApi.uploadProposalFile(
-        new File([exampleText], "brand_voice.txt", { type: "text/plain" }),
-        {}
-      );
+      const exampleText = brandVoice.differentiator ?? "";
+      const styleNotes = [
+        brandVoice.structure ? `Structure: ${brandVoice.structure}` : "",
+        brandVoice.avoid ? `Avoid: ${brandVoice.avoid}` : "",
+        brandVoice.signature ? `Signature: ${brandVoice.signature}` : "",
+      ].filter(Boolean).join(". ");
+      const toneTags = brandVoice.tone ?? "";
+      await ingestApi.uploadBrandVoice(exampleText, styleNotes, toneTags);
     } catch (e) {
       console.error(e);
     }
@@ -199,22 +200,20 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setCrmChoice("hubspot")}
-                  className={`border-2 rounded-xl p-6 text-left transition-all ${
-                    crmChoice === "hubspot"
+                  className={`border-2 rounded-xl p-6 text-left transition-all ${crmChoice === "hubspot"
                       ? "border-teal-500 bg-teal-50"
                       : "border-gray-200 hover:border-gray-300"
-                  }`}
+                    }`}
                 >
                   <div className="font-bold text-gray-900 mb-1">HubSpot</div>
                   <div className="text-sm text-gray-500">Connect CRM deals & contacts</div>
                 </button>
                 <button
                   onClick={() => setCrmChoice("pipedrive")}
-                  className={`border-2 rounded-xl p-6 text-left transition-all ${
-                    crmChoice === "pipedrive"
+                  className={`border-2 rounded-xl p-6 text-left transition-all ${crmChoice === "pipedrive"
                       ? "border-teal-500 bg-teal-50"
                       : "border-gray-200 hover:border-gray-300"
-                  }`}
+                    }`}
                 >
                   <div className="font-bold text-gray-900 mb-1">Pipedrive</div>
                   <div className="text-sm text-gray-500">Connect pipeline & deals</div>
@@ -223,7 +222,7 @@ export default function OnboardingPage() {
               {crmChoice && (
                 <button
                   onClick={() =>
-                    window.location.href === `/api/crm/${crmChoice}/connect`
+                    window.location.href = `${process.env.NEXT_PUBLIC_API_URL ?? ''}/crm/${crmChoice}/connect`
                   }
                   className="w-full bg-teal-500 text-white py-3 rounded-lg font-medium"
                 >
@@ -300,8 +299,8 @@ export default function OnboardingPage() {
               {isLastStep
                 ? "Complete Setup →"
                 : step === 2
-                ? "Continue →"
-                : "Continue →"}
+                  ? "Continue →"
+                  : "Continue →"}
             </button>
           </div>
         </div>

@@ -155,6 +155,39 @@ struct RAGPipeline {
             industry: industry
         )
     }
+
+    /// Primary execution flow returning an AsyncThrowingStream for Server-Sent Events.
+    func generateProposalStream(
+        customerId: String,
+        rfpText: String,
+        proposalsIndexed: Int,
+        industry: String?,
+        db: any Database
+    ) async throws -> AsyncThrowingStream<String, any Error> {
+        let coldStart = proposalsIndexed < ColdStart.shared.threshold
+        let contextChunks: [VectorMatch]
+
+        if coldStart {
+            let ind = industry ?? "consulting"
+            contextChunks = ColdStart.shared.getContext(industry: ind)
+            db.logger.info(
+                "RAG bypass: \(customerId) has <15 proposals. Using \(ind) ColdStart template.")
+        } else {
+            contextChunks = try await LocalVectorStore.shared.query(
+                customerId: customerId,
+                queryText: rfpText,
+                db: db
+            )
+        }
+
+        return ClaudeService.shared.generateProposalStream(
+            customerId: customerId,
+            rfpText: rfpText,
+            contextChunks: contextChunks,
+            coldStart: coldStart,
+            industry: industry
+        )
+    }
 }
 
 /// Lightweight pricing row for ingest requests.

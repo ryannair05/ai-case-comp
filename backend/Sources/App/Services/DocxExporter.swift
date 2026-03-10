@@ -26,18 +26,21 @@ struct DocxExporter {
             .components(separatedBy: "\n")
             .map { escapedXML($0) }
 
-        let bodyXML = paragraphs.map { line -> String in
-            if line.isEmpty {
+        let bodyXML = paragraphs.map { rawLine -> String in
+            // Detect Markdown headings: lines starting with one or more # characters
+            if rawLine.isEmpty {
                 return "<w:p/>"
             }
-            // Detect headings (all-caps lines or lines ending with a colon treated as headings)
-            let isHeading = line == line.uppercased() && !line.isEmpty && line.count < 80
-            if isHeading {
+            // Match # Heading 1, ## Heading 2, ### Heading 3 (on the escaped string prefix)
+            if rawLine.hasPrefix("#") {
+                // Strip leading # and spaces to get heading text
+                let stripped = rawLine.drop(while: { $0 == "#" || $0 == " " })
+                let styleVal = rawLine.hasPrefix("## ") ? "Heading2" : "Heading1"
                 return """
-                <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>\(line)</w:t></w:r></w:p>
+                <w:p><w:pPr><w:pStyle w:val="\(styleVal)"/></w:pPr><w:r><w:t>\(stripped)</w:t></w:r></w:p>
                 """
             }
-            return "<w:p><w:r><w:t xml:space=\"preserve\">\(line)</w:t></w:r></w:p>"
+            return "<w:p><w:r><w:t xml:space=\"preserve\">\(rawLine)</w:t></w:r></w:p>"
         }.joined(separator: "\n")
 
         let documentXML = """
@@ -97,6 +100,8 @@ struct DocxExporter {
     <w:rPr><w:b/><w:sz w:val="52"/></w:rPr></w:style>
   <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/>
     <w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/>
+    <w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style>
 </w:styles>
 """
 

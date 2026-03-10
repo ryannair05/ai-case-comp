@@ -1,6 +1,6 @@
-import Vapor
 import Fluent
 import Foundation
+import Vapor
 
 /// Context-Mapper status and switching cost endpoints.
 struct ContextMapperController {
@@ -16,11 +16,11 @@ struct ContextMapperController {
             .filter(\.$customerId == customer.id!).count()
         let result: [String: Any] = [
             "context_mapper_active": customer.contextMapperActive,
-            "proposals_indexed":     customer.proposalsIndexed,
-            "pricing_rows":          pricingCount,
-            "brand_examples":        brandCount,
-            "tier":                  customer.tier,
-            "namespace":             "customer_\(customer.id!.uuidString)",
+            "proposals_indexed": customer.proposalsIndexed,
+            "pricing_rows": pricingCount,
+            "brand_examples": brandCount,
+            "tier": customer.tier,
+            "namespace": "customer_\(customer.id!.uuidString)",
         ]
         return try await result.encodeResponse(for: req)
     }
@@ -40,28 +40,30 @@ func calculateSwitchingCost(customer: Customer) -> [String: Any] {
     let proposals = customer.proposalsIndexed
     // 4.2 hrs per proposal (from financial model)
     let humanHours = proposals * 4
-    let monthsActive = customer.onboardedAt.map { date -> Int in
-        let diff = Calendar.current.dateComponents([.month], from: date, to: Date())
-        return max(1, diff.month ?? 1)
-    } ?? 1
+    let monthsActive =
+        customer.onboardedAt.map { date -> Int in
+            let diff = Calendar.current.dateComponents([.month], from: date, to: Date())
+            return max(1, diff.month ?? 1)
+        } ?? 1
 
-    // Base cost formula: $85/hr consultant rate × hours + $50/mo SaaS replacement cost
-    let hoursCost = humanHours * 85
-    let saasReplacement = monthsActive * 50
+    // Base cost formula: $39/hr consultant rate × hours + $500/mo SaaS replacement cost
+    let hoursCost = humanHours * 39
+    let saasReplacement = monthsActive * 500
     let totalCost = hoursCost + saasReplacement
 
     let milestone: String
     switch proposals {
-    case 0..<5:   milestone = "onboarding"
-    case 5..<20:  milestone = "embedded"
-    default:      milestone = "entrenched"
+    case 0..<5: milestone = "onboarding"
+    case 5..<20: milestone = "embedded"
+    case 20..<50: milestone = "entrenched"
+    default: milestone = "irreplaceable"
     }
 
     return [
-        "total_cost":       totalCost,
-        "human_hours":      humanHours,
+        "total_cost": totalCost,
+        "human_hours": humanHours,
         "proposals_indexed": proposals,
-        "months_active":    monthsActive,
-        "milestone":        milestone,
+        "months_active": monthsActive,
+        "milestone": milestone,
     ]
 }

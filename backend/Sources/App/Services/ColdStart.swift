@@ -21,9 +21,13 @@ struct ColdStart: Sendable {
                     "content_strategy": [5000, 8000],
                     "full_service_retainer": [6000, 12000],
                 ] as [String: [Int]],
-                "structure": ["Executive Summary", "Situation Analysis", "Strategic Approach",
-                              "Timeline & Milestones", "Investment", "Why Us", "Next Steps"],
-                "winning_phrases": ["data-driven creative strategy", "measurable ROI", "full-funnel approach"],
+                "structure": [
+                    "Executive Summary", "Situation Analysis", "Strategic Approach",
+                    "Timeline & Milestones", "Investment", "Why Us", "Next Steps",
+                ],
+                "winning_phrases": [
+                    "data-driven creative strategy", "measurable ROI", "full-funnel approach",
+                ],
             ],
             "consulting": [
                 "typical_pricing": [
@@ -32,9 +36,13 @@ struct ColdStart: Sendable {
                     "change_management": [20000, 60000],
                     "digital_transformation": [30000, 100000],
                 ] as [String: [Int]],
-                "structure": ["Executive Summary", "Problem Statement", "Proposed Approach",
-                              "Deliverables", "Timeline", "Investment", "Team & Credentials"],
-                "winning_phrases": ["proven methodology", "measurable outcomes", "stakeholder alignment"],
+                "structure": [
+                    "Executive Summary", "Problem Statement", "Proposed Approach",
+                    "Deliverables", "Timeline", "Investment", "Team & Credentials",
+                ],
+                "winning_phrases": [
+                    "proven methodology", "measurable outcomes", "stakeholder alignment",
+                ],
             ],
             "legal": [
                 "typical_pricing": [
@@ -43,8 +51,13 @@ struct ColdStart: Sendable {
                     "litigation_support": [10000, 50000],
                     "compliance_audit": [8000, 20000],
                 ] as [String: [Int]],
-                "structure": ["Scope of Engagement", "Approach & Methodology", "Team", "Timeline", "Fee Structure"],
-                "winning_phrases": ["risk mitigation", "regulatory compliance", "proven track record"],
+                "structure": [
+                    "Scope of Engagement", "Approach & Methodology", "Team", "Timeline",
+                    "Fee Structure",
+                ],
+                "winning_phrases": [
+                    "risk mitigation", "regulatory compliance", "proven track record",
+                ],
             ],
             "accounting": [
                 "typical_pricing": [
@@ -53,8 +66,98 @@ struct ColdStart: Sendable {
                     "bookkeeping": [500, 2000],
                     "cfo_services": [5000, 15000],
                 ] as [String: [Int]],
-                "structure": ["Engagement Overview", "Services", "Timeline", "Fees", "Why Our Firm"],
-                "winning_phrases": ["GAAP compliant", "proactive tax strategy", "real-time visibility"],
+                "structure": [
+                    "Engagement Overview", "Services", "Timeline", "Fees", "Why Our Firm",
+                ],
+                "winning_phrases": [
+                    "GAAP compliant", "proactive tax strategy", "real-time visibility",
+                ],
+            ],
+            "pr_comms": [
+                "typical_pricing": [
+                    "media_relations": [3000, 8000],
+                    "crisis_comms": [10000, 30000],
+                    "press_release_campaign": [2000, 5000],
+                    "executive_branding": [5000, 12000],
+                ] as [String: [Int]],
+                "structure": [
+                    "Situation Overview", "Communications Strategy", "Messaging Framework",
+                    "Media Plan", "Timeline", "Investment",
+                ],
+                "winning_phrases": ["earned media value", "share of voice", "narrative control"],
+            ],
+            "architecture": [
+                "typical_pricing": [
+                    "schematic_design": [10000, 40000],
+                    "design_development": [15000, 60000],
+                    "construction_docs": [20000, 80000],
+                    "project_management": [5000, 15000],
+                ] as [String: [Int]],
+                "structure": [
+                    "Project Understanding", "Design Vision", "Scope of Services", "Fee Schedule",
+                    "Timeline", "Firm Portfolio",
+                ],
+                "winning_phrases": [
+                    "design excellence", "sustainable solutions", "built environment",
+                ],
+            ],
+            "financial_advisory": [
+                "typical_pricing": [
+                    "wealth_management": [5000, 20000],
+                    "retirement_planning": [2000, 8000],
+                    "estate_planning": [3000, 15000],
+                    "business_valuation": [5000, 25000],
+                ] as [String: [Int]],
+                "structure": [
+                    "Client Situation", "Financial Assessment", "Recommended Strategy",
+                    "Implementation Plan", "Fee Structure", "Credentials",
+                ],
+                "winning_phrases": [
+                    "fiduciary duty", "risk-adjusted returns", "comprehensive planning",
+                ],
+            ],
+            "recruiting": [
+                "typical_pricing": [
+                    "executive_search": [20000, 60000],
+                    "contingent_placement": [5000, 20000],
+                    "rpo_program": [10000, 30000],
+                    "talent_mapping": [3000, 10000],
+                ] as [String: [Int]],
+                "structure": [
+                    "Search Strategy", "Candidate Profile", "Process & Timeline", "Fee Structure",
+                    "Guarantee Terms", "Track Record",
+                ],
+                "winning_phrases": [
+                    "quality of hire", "time-to-fill reduction", "passive talent pool",
+                ],
+            ],
+            "web_dev": [
+                "typical_pricing": [
+                    "website_design": [5000, 25000],
+                    "web_application": [15000, 80000],
+                    "ecommerce_build": [10000, 40000],
+                    "maintenance_retainer": [1000, 5000],
+                ] as [String: [Int]],
+                "structure": [
+                    "Project Overview", "Technical Approach", "Design Process",
+                    "Development Phases", "Testing & QA", "Timeline", "Investment",
+                ],
+                "winning_phrases": [
+                    "responsive design", "conversion-optimized", "scalable architecture",
+                ],
+            ],
+            "creative_design": [
+                "typical_pricing": [
+                    "brand_identity": [5000, 20000],
+                    "packaging_design": [3000, 12000],
+                    "campaign_creative": [5000, 25000],
+                    "motion_graphics": [2000, 10000],
+                ] as [String: [Int]],
+                "structure": [
+                    "Creative Brief", "Concept Development", "Design Exploration",
+                    "Revisions & Refinement", "Final Deliverables", "Investment",
+                ],
+                "winning_phrases": ["visual storytelling", "brand consistency", "design thinking"],
             ],
         ]
     }
@@ -70,33 +173,38 @@ struct ColdStart: Sendable {
         // Pricing benchmarks as pseudo context-chunks
         if let pricing = template["typical_pricing"] as? [String: [Int]] {
             for (svc, range) in pricing {
-                chunks.append(VectorMatch(
-                    score: 0.75,
-                    text: "Service: \(svc) | Typical Range: $\(formatted(range[0]))–$\(formatted(range[1])) | Industry benchmark (cold-start template)",
-                    entryType: "pricing",
-                    metadata: ["cold_start": true]
-                ))
+                chunks.append(
+                    VectorMatch(
+                        score: 0.75,
+                        text:
+                            "Service: \(svc) | Typical Range: $\(formatted(range[0]))–$\(formatted(range[1])) | Industry benchmark (cold-start template)",
+                        entryType: "pricing",
+                        metadata: ["cold_start": true]
+                    ))
             }
         }
 
         // Proposal structure hint
         if let structure = template["structure"] as? [String] {
-            chunks.append(VectorMatch(
-                score: 0.75,
-                text: "Recommended proposal structure: \(structure.joined(separator: " → "))",
-                entryType: "proposal_chunk",
-                metadata: ["cold_start": true]
-            ))
+            chunks.append(
+                VectorMatch(
+                    score: 0.75,
+                    text: "Recommended proposal structure: \(structure.joined(separator: " → "))",
+                    entryType: "proposal_chunk",
+                    metadata: ["cold_start": true]
+                ))
         }
 
         // Winning phrases as brand-voice hint
         if let phrases = template["winning_phrases"] as? [String] {
-            chunks.append(VectorMatch(
-                score: 0.75,
-                text: "Effective language patterns for this industry: \(phrases.joined(separator: ", "))",
-                entryType: "brand_voice",
-                metadata: ["cold_start": true]
-            ))
+            chunks.append(
+                VectorMatch(
+                    score: 0.75,
+                    text:
+                        "Effective language patterns for this industry: \(phrases.joined(separator: ", "))",
+                    entryType: "brand_voice",
+                    metadata: ["cold_start": true]
+                ))
         }
 
         return chunks

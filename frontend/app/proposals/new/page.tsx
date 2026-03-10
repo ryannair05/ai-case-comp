@@ -10,6 +10,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 import { proposalsApi } from "@/lib/api";
 import { useAuth, hasProfessionalAccess } from "@/lib/auth";
 
@@ -206,9 +207,9 @@ export default function NewProposalPage() {
             </div>
 
             <div className="bg-gray-50 rounded-xl p-4 max-h-[500px] overflow-y-auto">
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
-                {result.content}
-              </pre>
+              <div className="prose prose-sm prose-gray max-w-none text-gray-700 leading-relaxed">
+                <ReactMarkdown>{result.content}</ReactMarkdown>
+              </div>
             </div>
 
             <div className="flex items-center gap-2 text-xs text-gray-400">

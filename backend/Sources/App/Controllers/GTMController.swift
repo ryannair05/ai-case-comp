@@ -21,8 +21,13 @@ struct GTMController {
     @Sendable
     func extractMeetingSignals(_ req: Request) async throws -> Response {
         let customer = try await req.authenticatedCustomer()
-        guard customer.tier == "gtm_agent" || customer.tier == "professional" else {
-            throw Abort(.forbidden, reason: "GTM Agent features require the GTM Agent tier ($399/mo).")
+        guard customer.tier == "gtm_agent" else {
+            throw Abort(
+                .forbidden,
+                reason: customer.tier == "professional"
+                    ? "GTM Agent features are preview-only on Professional. Upgrade to GTM Agent ($399/mo) for full access."
+                    : "GTM Agent features require the GTM Agent tier ($399/mo)."
+            )
         }
         let body = try req.content.decode(MeetingSignalsRequest.self)
         let signals = try await ClaudeService.shared.extractMeetingSignals(
@@ -53,8 +58,13 @@ struct GTMController {
     @Sendable
     func generateOutreachSequence(_ req: Request) async throws -> Response {
         let customer = try await req.authenticatedCustomer()
-        guard customer.tier == "gtm_agent" || customer.tier == "professional" else {
-            throw Abort(.forbidden, reason: "GTM Agent features require the GTM Agent tier ($399/mo).")
+        guard customer.tier == "gtm_agent" else {
+            throw Abort(
+                .forbidden,
+                reason: customer.tier == "professional"
+                    ? "GTM Agent features are preview-only on Professional. Upgrade to GTM Agent ($399/mo) for full access."
+                    : "GTM Agent features require the GTM Agent tier ($399/mo)."
+            )
         }
         let body = try req.content.decode(OutreachRequest.self)
 

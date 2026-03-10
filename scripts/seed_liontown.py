@@ -3,14 +3,15 @@ Seed the demo environment with LionTown Marketing data.
 Run once before the competition:
   python scripts/seed_liontown.py
 
-Creates a realistic 847-proposal marketing agency knowledge graph
-in the LionTown customer namespace.
+Calls the Swift Vapor API endpoints instead of direct DB imports.
+Requires the Vapor backend to be running at API_URL.
 """
 import asyncio
 import os
 import sys
-import uuid
 from pathlib import Path
+
+import httpx
 
 # Load .env.local from repo root before anything else
 _repo_root = Path(__file__).parent.parent
@@ -24,50 +25,38 @@ for _env_name in (".env.local", ".env"):
                 os.environ.setdefault(key.strip(), val.strip())
         break
 
-sys.path.insert(0, str(_repo_root / "backend"))
-
-from services.embeddings import embed_batch
-from services.pinecone_client import get_or_create_index, upsert_vectors, customer_namespace
-from supabase import create_client
+API_URL = os.environ.get("NEXT_PUBLIC_API_URL", "http://localhost:8080")
 
 # ---------------------------------------------------------------------------
 # LionTown Marketing demo firm definition
 # ---------------------------------------------------------------------------
 
 LIONTOWN = {
-    "id": "0d1a3e07-5d4a-5f7d-8be7-255a1109bce0",
     "name": "LionTown Marketing",
     "email": "demo@liontown.com",
-    "proposals_indexed": 847,
+    "password": "liontown2025!",
     "tier": "professional",
-    "context_mapper_active": True,
-    "onboarded_at": "2025-10-01T00:00:00Z",
     "industry": "marketing_agency",
-    "monthly_revenue": 249.0,
-    "status": "active",
 }
 
 PRICING_CATALOG = [
-    {"service_type": "social_media_audit", "price_usd": 4500, "won": True},
-    {"service_type": "brand_strategy", "price_usd": 12000, "won": True},
-    {"service_type": "paid_media", "price_usd": 2800, "won": False},
-    {"service_type": "content_strategy", "price_usd": 6500, "won": True},
-    {"service_type": "website_redesign", "price_usd": 18000, "won": True},
-    {"service_type": "seo_package", "price_usd": 3200, "won": True},
-    {"service_type": "email_marketing", "price_usd": 2200, "won": False},
-    {"service_type": "full_service_retainer", "price_usd": 8500, "won": True},
+    {"service_type": "social_media_audit", "price_usd": 4500, "won": True, "notes": "LionTown standard pricing"},
+    {"service_type": "brand_strategy", "price_usd": 12000, "won": True, "notes": "LionTown standard pricing"},
+    {"service_type": "paid_media", "price_usd": 2800, "won": False, "notes": "Monthly managed campaign"},
+    {"service_type": "content_strategy", "price_usd": 6500, "won": True, "notes": "90-day content roadmap"},
+    {"service_type": "website_redesign", "price_usd": 18000, "won": True, "notes": "Full redesign + SEO"},
+    {"service_type": "seo_package", "price_usd": 3200, "won": True, "notes": "12-month retainer"},
+    {"service_type": "email_marketing", "price_usd": 2200, "won": False, "notes": "CRM + nurture sequences"},
+    {"service_type": "full_service_retainer", "price_usd": 8500, "won": True, "notes": "Monthly engagement"},
 ]
 
-KEY_WIN_STORIES = [
+SAMPLE_PROPOSALS = [
     {
-        "id": str(uuid.uuid4()),
-        "client": "Brightfield Technologies",
-        "win_rate_reference": "73% overall win rate",
+        "client_name": "Brightfield Technologies",
         "value_usd": 45000,
         "outcome": "won",
         "win_reason": "Deep data analytics positioning + 90-day ROI guarantee",
-        "content": """
-EXECUTIVE SUMMARY
+        "content": """EXECUTIVE SUMMARY
 LionTown Marketing is pleased to present this proposal to Brightfield Technologies.
 Based on our analysis, we recommend a comprehensive digital transformation strategy
 that will position Brightfield as the thought leader in B2B data analytics.
@@ -90,171 +79,146 @@ Total Year-1 Investment: $114,000
 WHY LIONTOWN
 Our 73% win rate in B2B technology clients speaks to our methodology.
 We guarantee measurable ROI within 90 days or we work for free until we deliver.
-Results you can measure, stories worth telling.
-""",
-    }
+Results you can measure, stories worth telling.""",
+    },
+    {
+        "client_name": "Greenfield Capital",
+        "value_usd": 66000,
+        "outcome": "won",
+        "win_reason": "Data-driven approach + ROI guarantee",
+        "content": "Brand strategy proposal for Greenfield Capital. Full-funnel approach with measurable ROI milestones. Investment: $12,000 brand strategy + $4,500/mo retainer.",
+    },
+    {
+        "client_name": "Apex Solutions",
+        "value_usd": 11000,
+        "outcome": "won",
+        "win_reason": "Fast turnaround, clear deliverables",
+        "content": "Social media audit and content strategy for Apex Solutions B2B tech firm. 90-day content roadmap. Investment: $4,500 audit + $6,500 strategy.",
+    },
+    {
+        "client_name": "Summit Partners",
+        "value_usd": 33600,
+        "outcome": "lost",
+        "content": "Paid media management proposal for Summit Partners. Full-funnel paid strategy across LinkedIn and Google. Monthly retainer: $2,800.",
+    },
+    {
+        "client_name": "Horizon Group",
+        "value_usd": 56400,
+        "outcome": "won",
+        "win_reason": "Integrated approach, strong case studies",
+        "content": "Website redesign and SEO package for Horizon Group. New site + 12-month SEO retainer. Investment: $18,000 redesign + $3,200/mo SEO.",
+    },
+    {
+        "client_name": "Nexus Media",
+        "value_usd": 26400,
+        "outcome": "won",
+        "win_reason": "Automation expertise, quick setup",
+        "content": "Email marketing automation setup and management. Full CRM integration with 6-month nurture sequences. Investment: $2,200/mo.",
+    },
 ]
 
 BRAND_VOICE = {
-    "tone": ["authoritative", "data-driven", "warm"],
-    "signature_phrase": "Results you can measure, stories worth telling",
-    "avoid": ["jargon", "excessive adjectives"],
-    "preferred_structure": "Problem → Insight → Solution → Evidence → Investment",
-    "example_text": """
-At LionTown Marketing, we believe every dollar of marketing spend should be
+    "example_text": """At LionTown Marketing, we believe every dollar of marketing spend should be
 accountable. We don't just tell compelling stories — we build systems that
 prove those stories drive revenue. Our data-driven creative strategy has
 helped 47 B2B firms achieve an average 340% ROI on their marketing investment.
 
-Results you can measure, stories worth telling.
-""",
+Results you can measure, stories worth telling.""",
+    "style_notes": "Structure: Problem → Insight → Solution → Evidence → Investment. Avoid: jargon, excessive adjectives. Signature: Results you can measure, stories worth telling.",
+    "tone_tags": "authoritative, data-driven, warm",
 }
-
-# ---------------------------------------------------------------------------
-# Sample proposals (simulating 847 indexed — we seed a representative subset)
-# ---------------------------------------------------------------------------
-
-SAMPLE_PROPOSALS = [
-    {
-        "client": "Greenfield Capital",
-        "content": "Brand strategy proposal for Greenfield Capital. Full-funnel approach with measurable ROI milestones. Investment: $12,000 brand strategy + $4,500/mo retainer.",
-        "outcome": "won",
-        "value_usd": 66000,
-        "win_reason": "Data-driven approach + ROI guarantee",
-    },
-    {
-        "client": "Apex Solutions",
-        "content": "Social media audit and content strategy for Apex Solutions B2B tech firm. 90-day content roadmap. Investment: $4,500 audit + $6,500 strategy.",
-        "outcome": "won",
-        "value_usd": 11000,
-        "win_reason": "Fast turnaround, clear deliverables",
-    },
-    {
-        "client": "Summit Partners",
-        "content": "Paid media management proposal for Summit Partners. Full-funnel paid strategy across LinkedIn and Google. Monthly retainer: $2,800.",
-        "outcome": "lost",
-        "value_usd": 33600,
-        "win_reason": None,
-    },
-    {
-        "client": "Horizon Group",
-        "content": "Website redesign and SEO package for Horizon Group. New site + 12-month SEO retainer. Investment: $18,000 redesign + $3,200/mo SEO.",
-        "outcome": "won",
-        "value_usd": 56400,
-        "win_reason": "Integrated approach, strong case studies",
-    },
-    {
-        "client": "Nexus Media",
-        "content": "Email marketing automation setup and management. Full CRM integration with 6-month nurture sequences. Investment: $2,200/mo.",
-        "outcome": "won",
-        "value_usd": 26400,
-        "win_reason": "Automation expertise, quick setup",
-    },
-]
-
-
-async def seed_customer_in_supabase(supabase) -> None:
-    """Upsert LionTown customer record."""
-    supabase.table("customers").upsert(LIONTOWN).execute()
-    print(f"✓ Customer record upserted: {LIONTOWN['name']}")
-
-
-async def seed_pricing_in_pinecone(customer_id: str) -> None:
-    """Embed and upsert pricing catalog."""
-    texts = [
-        f"Service: {r['service_type']} | Price: USD {r['price_usd']} | Won: {r['won']} | Notes: LionTown standard pricing"
-        for r in PRICING_CATALOG
-    ]
-    embeddings = await embed_batch(texts)
-    vectors = [
-        {
-            "id": f"pricing_{customer_id}_{i}",
-            "values": emb,
-            "metadata": {
-                "type": "pricing",
-                "customer_id": customer_id,
-                "service_type": PRICING_CATALOG[i]["service_type"],
-                "price_usd": PRICING_CATALOG[i]["price_usd"],
-                "won": PRICING_CATALOG[i]["won"],
-                "text": texts[i],
-            },
-        }
-        for i, emb in enumerate(embeddings)
-    ]
-    upsert_vectors(customer_id, vectors)
-    print(f"✓ Seeded {len(vectors)} pricing vectors")
-
-
-async def seed_proposals_in_pinecone(customer_id: str) -> None:
-    """Embed and upsert sample proposals (representing 847 indexed)."""
-    all_proposals = KEY_WIN_STORIES + SAMPLE_PROPOSALS
-    texts = [p["content"] for p in all_proposals]
-    embeddings = await embed_batch(texts)
-    vectors = [
-        {
-            "id": f"prop_seed_{i}",
-            "values": emb,
-            "metadata": {
-                "type": "proposal_chunk",
-                "customer_id": customer_id,
-                "proposal_id": f"seed_{i}",
-                "chunk_index": 0,
-                "text": texts[i],
-                "client_name": p.get("client", p.get("client_name", "")),
-                "outcome": p.get("outcome", ""),
-                "value_usd": p.get("value_usd", 0),
-                "win_reason": p.get("win_reason", "") or "",
-            },
-        }
-        for i, (emb, p) in enumerate(zip(embeddings, all_proposals))
-    ]
-    upsert_vectors(customer_id, vectors)
-    print(f"✓ Seeded {len(vectors)} proposal vectors (representing 847 indexed)")
-
-
-async def seed_brand_voice_in_pinecone(customer_id: str) -> None:
-    """Embed and upsert brand voice examples."""
-    text = BRAND_VOICE["example_text"]
-    embeddings = await embed_batch([text])
-    vectors = [
-        {
-            "id": f"bv_liontown_0",
-            "values": embeddings[0],
-            "metadata": {
-                "type": "brand_voice",
-                "customer_id": customer_id,
-                "text": text,
-                "tone": ", ".join(BRAND_VOICE["tone"]),
-                "signature_phrase": BRAND_VOICE["signature_phrase"],
-            },
-        }
-    ]
-    upsert_vectors(customer_id, vectors)
-    print(f"✓ Seeded brand voice vectors")
 
 
 async def main() -> None:
     print("\n🦁 Seeding LionTown Marketing demo data...\n")
+    print(f"   API: {API_URL}\n")
 
-    supabase = create_client(
-        os.environ["NEXT_PUBLIC_SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
-    )
+    async with httpx.AsyncClient(base_url=API_URL, timeout=30.0) as http:
 
-    customer_id = LIONTOWN["id"]
+        # 1. Register the demo account (or login if it already exists)
+        token = None
+        try:
+            res = await http.post("/auth/register", json=LIONTOWN)
+            res.raise_for_status()
+            data = res.json()
+            token = data["token"]
+            customer_id = data["customer_id"]
+            print(f"✓ Registered: {LIONTOWN['name']} (id={customer_id})")
+        except httpx.HTTPStatusError:
+            # Probably already registered — try login
+            res = await http.post(
+                "/auth/login",
+                json={"email": LIONTOWN["email"], "password": LIONTOWN["password"]},
+            )
+            res.raise_for_status()
+            data = res.json()
+            token = data["token"]
+            customer_id = data["customer_id"]
+            print(f"✓ Logged in (already registered): {LIONTOWN['name']} (id={customer_id})")
 
-    # Ensure Pinecone index exists
-    get_or_create_index()
-    print(f"✓ Pinecone index ready")
+        headers = {"Authorization": f"Bearer {token}"}
 
-    await seed_customer_in_supabase(supabase)
-    await seed_pricing_in_pinecone(customer_id)
-    await seed_proposals_in_pinecone(customer_id)
-    await seed_brand_voice_in_pinecone(customer_id)
+        # 2. Upload pricing CSV
+        import io
+
+        csv_lines = ["service_type,price_usd,won,notes"]
+        for row in PRICING_CATALOG:
+            csv_lines.append(
+                f"{row['service_type']},{row['price_usd']},{str(row['won']).lower()},{row.get('notes', '')}"
+            )
+        csv_content = "\n".join(csv_lines)
+
+        res = await http.post(
+            "/ingest/pricing-csv",
+            headers={**headers, "Content-Type": "text/csv"},
+            content=csv_content.encode(),
+        )
+        res.raise_for_status()
+        print(f"✓ Seeded {len(PRICING_CATALOG)} pricing rows")
+
+        # 3. Upload sample proposals
+        for i, prop in enumerate(SAMPLE_PROPOSALS):
+            res = await http.post(
+                "/proposals",
+                headers=headers,
+                json={
+                    "title": f"Proposal for {prop['client_name']}",
+                    "content": prop["content"],
+                    "client_name": prop.get("client_name"),
+                    "value_usd": prop.get("value_usd"),
+                    "outcome": prop.get("outcome", "pending"),
+                },
+            )
+            res.raise_for_status()
+            proposal_id = res.json().get("id", "")
+
+            # Mark win/loss with reason
+            if prop.get("outcome") in ("won", "lost"):
+                update_data = {"outcome": prop["outcome"]}
+                if prop.get("win_reason"):
+                    update_data["win_reason"] = prop["win_reason"]
+                await http.patch(
+                    f"/proposals/{proposal_id}",
+                    headers=headers,
+                    json=update_data,
+                )
+
+            print(f"  ✓ Proposal {i + 1}/{len(SAMPLE_PROPOSALS)}: {prop['client_name']} ({prop.get('outcome', 'pending')})")
+
+        print(f"✓ Seeded {len(SAMPLE_PROPOSALS)} proposals")
+
+        # 4. Upload brand voice
+        res = await http.post(
+            "/ingest/brand-voice",
+            headers=headers,
+            json=BRAND_VOICE,
+        )
+        res.raise_for_status()
+        print("✓ Seeded brand voice")
 
     print(f"\n✅ LionTown Marketing seeded successfully!")
-    print(f"   Namespace: {customer_namespace(customer_id)}")
-    print(f"   Proposals indexed: 847 (simulated)")
+    print(f"   Customer ID: {customer_id}")
+    print(f"   Proposals indexed: {len(SAMPLE_PROPOSALS)} (simulated 847)")
     print(f"   Retainer anchor: $4,500")
     print(f"   Win rate to cite: 73% (Brightfield case)")
     print(f"\n   Demo is ready at: http://localhost:3000/demo\n")

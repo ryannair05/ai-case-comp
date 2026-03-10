@@ -1,6 +1,7 @@
 import Foundation
+
 #if canImport(FoundationNetworking)
-import FoundationNetworking
+    import FoundationNetworking
 #endif
 
 /// OpenAI text-embedding-3-large embedding service.
@@ -54,22 +55,43 @@ struct EmbeddingsService {
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw EmbeddingError.apiError("OpenAI API returned non-200")
-        }
+        // Retry with exponential backoff on HTTP 429
+        let maxRetries = 3
+        var lastError: (any Error)?
+        for attempt in 0..<maxRetries {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse else {
+                throw EmbeddingError.apiError("Invalid HTTP response")
+            }
+            if http.statusCode == 429 {
+                // Read Retry-After header or use exponential backoff
+                let retryAfter =
+                    http.value(forHTTPHeaderField: "Retry-After")
+                    .flatMap(Double.init) ?? Double(1 << attempt)
+                let delayNs = UInt64(min(retryAfter, 10.0) * 1_000_000_000)
+                try await Task.sleep(nanoseconds: delayNs)
+                lastError = EmbeddingError.apiError(
+                    "Rate limited (429), attempt \(attempt + 1)/\(maxRetries)")
+                continue
+            }
+            guard http.statusCode == 200 else {
+                throw EmbeddingError.apiError("OpenAI API returned \(http.statusCode)")
+            }
 
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let dataArray = json["data"] as? [[String: Any]] else {
-            throw EmbeddingError.parseError
-        }
-
-        return try dataArray.map { item in
-            guard let embedding = item["embedding"] as? [Double] else {
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let dataArray = json["data"] as? [[String: Any]]
+            else {
                 throw EmbeddingError.parseError
             }
-            return embedding.map { Float($0) }
+
+            return try dataArray.map { item in
+                guard let embedding = item["embedding"] as? [Double] else {
+                    throw EmbeddingError.parseError
+                }
+                return embedding.map { Float($0) }
+            }
         }
+        throw lastError ?? EmbeddingError.apiError("Max retries exceeded")
     }
 
     enum EmbeddingError: Error {

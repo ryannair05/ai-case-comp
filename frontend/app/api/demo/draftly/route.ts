@@ -1,13 +1,16 @@
 /**
  * Demo API: Draftly + Context-Mapper streaming endpoint.
- * Uses Claude Sonnet 4.6 with LionTown's retrieved context.
+ * Calls the real Vapor backend RAG pipeline instead of using hardcoded context.
+ * Falls back to direct Claude call with hardcoded context if backend is unreachable.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const DEMO_JWT_TOKEN = process.env.DEMO_JWT_TOKEN ?? "";
 
-// LionTown's actual context (pre-loaded for demo speed)
+// Fallback context if the backend is unreachable
 const LIONTOWN_CONTEXT = `
 PRICING HISTORY (use these as anchors):
 Service: social_media_audit | Price: USD 4500 | Won: True | LionTown standard pricing
@@ -34,6 +37,50 @@ Tone: authoritative, data-driven, warm. Avoid: jargon, excessive adjectives.
 export async function POST(req: NextRequest) {
   const { rfp_text } = await req.json();
 
+  // Try the real backend RAG pipeline first
+  if (DEMO_JWT_TOKEN) {
+    try {
+      const backendRes = await fetch(`${API_URL}/proposals/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${DEMO_JWT_TOKEN}`,
+        },
+        body: JSON.stringify({ rfp_text }),
+        signal: AbortSignal.timeout(25_000),
+      });
+
+      if (backendRes.ok) {
+        const data = await backendRes.json();
+        const proposalText =
+          data.content ?? data.proposal ?? JSON.stringify(data);
+
+        // Stream the proposal text character-by-character for demo polish
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+          async start(controller) {
+            const words = proposalText.split(" ");
+            for (const word of words) {
+              controller.enqueue(encoder.encode(word + " "));
+              await new Promise((r) => setTimeout(r, 15));
+            }
+            controller.close();
+          },
+        });
+
+        return new Response(readable, {
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+    } catch {
+      // Backend unreachable — fall through to hardcoded context
+      console.warn(
+        "[demo/draftly] Backend unreachable, falling back to hardcoded context"
+      );
+    }
+  }
+
+  // Fallback: use hardcoded context with direct Claude call
   const system = `You are Draftly, generating a proposal for LionTown Marketing, a Philadelphia-based marketing agency.
 
 FIRM CONTEXT (from their Context-Mapper — 847 proposals indexed):

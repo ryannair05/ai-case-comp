@@ -1,23 +1,28 @@
-import Vapor
 import Foundation
+import Vapor
+
 #if canImport(FoundationNetworking)
-import FoundationNetworking
+    import FoundationNetworking
 #endif
 
 /// HubSpot CRM integration — OAuth + deal logging.
 struct CRMController {
-    private let hubspotClientId     = ProcessInfo.processInfo.environment["HUBSPOT_CLIENT_ID"] ?? ""
-    private let hubspotClientSecret = ProcessInfo.processInfo.environment["HUBSPOT_CLIENT_SECRET"] ?? ""
-    private let redirectURI         = ProcessInfo.processInfo.environment["HUBSPOT_REDIRECT_URI"]
+    private let hubspotClientId = ProcessInfo.processInfo.environment["HUBSPOT_CLIENT_ID"] ?? ""
+    private let hubspotClientSecret =
+        ProcessInfo.processInfo.environment["HUBSPOT_CLIENT_SECRET"] ?? ""
+    private let redirectURI =
+        ProcessInfo.processInfo.environment["HUBSPOT_REDIRECT_URI"]
         ?? "https://api.draftly.ai/crm/hubspot/callback"
 
     // MARK: - OAuth initiation
 
     @Sendable
     func hubspotConnect(_ req: Request) async throws -> Response {
-        let state = UUID().uuidString
+        let customer = try await req.authenticatedCustomer()
+        let state = customer.id!.uuidString
         let scopes = "crm.objects.deals.write%20crm.objects.contacts.read"
-        let url = "https://app.hubspot.com/oauth/authorize"
+        let url =
+            "https://app.hubspot.com/oauth/authorize"
             + "?client_id=\(hubspotClientId)"
             + "&redirect_uri=\(redirectURI.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? redirectURI)"
             + "&scope=\(scopes)"
@@ -29,7 +34,13 @@ struct CRMController {
 
     @Sendable
     func hubspotCallback(_ req: Request) async throws -> Response {
-        let customer = try await req.authenticatedCustomer()
+        // Extract customer ID from the OAuth state parameter
+        guard let stateParam = req.query[String.self, at: "state"],
+            let customerId = UUID(uuidString: stateParam),
+            let customer = try await Customer.find(customerId, on: req.db)
+        else {
+            throw Abort(.badRequest, reason: "Invalid or missing state parameter")
+        }
         guard let code = req.query[String.self, at: "code"] else {
             throw Abort(.badRequest, reason: "Missing authorization code")
         }
@@ -39,7 +50,8 @@ struct CRMController {
         var tokenReq = URLRequest(url: tokenURL)
         tokenReq.httpMethod = "POST"
         tokenReq.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        let body = "grant_type=authorization_code"
+        let body =
+            "grant_type=authorization_code"
             + "&client_id=\(hubspotClientId)"
             + "&client_secret=\(hubspotClientSecret)"
             + "&redirect_uri=\(redirectURI)"
@@ -47,8 +59,9 @@ struct CRMController {
         tokenReq.httpBody = body.data(using: .utf8)
 
         guard let (data, _) = try? await URLSession.shared.data(for: tokenReq),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let accessToken = json["access_token"] as? String else {
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let accessToken = json["access_token"] as? String
+        else {
             throw Abort(.badGateway, reason: "Failed to exchange code for HubSpot token")
         }
 
@@ -69,7 +82,7 @@ struct CRMController {
         enum CodingKeys: String, CodingKey {
             case proposalId = "proposal_id"
             case clientName = "client_name"
-            case valueUsd   = "value_usd"
+            case valueUsd = "value_usd"
             case outcome
         }
     }
@@ -78,29 +91,33 @@ struct CRMController {
     func logDeal(_ req: Request) async throws -> Response {
         let customer = try await req.authenticatedCustomer()
         guard customer.hubspotConnected, let token = customer.hubspotToken else {
-            throw Abort(.preconditionFailed, reason: "HubSpot not connected. Visit /crm/hubspot/connect")
+            throw Abort(
+                .preconditionFailed, reason: "HubSpot not connected. Visit /crm/hubspot/connect")
         }
 
         let body = try req.content.decode(LogDealRequest.self)
-        let dealStage = body.outcome == "won" ? "closedwon" : body.outcome == "lost" ? "closedlost" : "contractsent"
+        let dealStage =
+            body.outcome == "won"
+            ? "closedwon" : body.outcome == "lost" ? "closedlost" : "contractsent"
 
         let dealURL = URL(string: "https://api.hubapi.com/crm/v3/objects/deals")!
         var dealReq = URLRequest(url: dealURL)
         dealReq.httpMethod = "POST"
         dealReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        dealReq.setValue("application/json",  forHTTPHeaderField: "Content-Type")
+        dealReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let dealBody: [String: Any] = [
             "properties": [
-                "dealname":  "\(body.clientName) — Draftly Proposal",
-                "amount":    body.valueUsd.map { "\($0)" } ?? "0",
+                "dealname": "\(body.clientName) — Draftly Proposal",
+                "amount": body.valueUsd.map { "\($0)" } ?? "0",
                 "dealstage": dealStage,
-                "pipeline":  "default",
+                "pipeline": "default",
             ]
         ]
         dealReq.httpBody = try JSONSerialization.data(withJSONObject: dealBody)
 
         guard let (data, _) = try? await URLSession.shared.data(for: dealReq),
-              let response = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            let response = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
             throw Abort(.badGateway, reason: "HubSpot API request failed")
         }
 

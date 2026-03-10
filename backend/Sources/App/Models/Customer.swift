@@ -1,6 +1,6 @@
 import Fluent
-import Vapor
 import JWT
+import Vapor
 
 /// Customer record — replaces Supabase `customers` table.
 final class Customer: Model, Content, @unchecked Sendable {
@@ -50,11 +50,17 @@ final class Customer: Model, Content, @unchecked Sendable {
     @OptionalField(key: "hubspot_token")
     var hubspotToken: String?
 
+    @OptionalField(key: "pipedrive_api_key")
+    var pipedriveApiKey: String?
+
     @Timestamp(key: "onboarded_at", on: .none)
     var onboardedAt: Date?
 
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
+
+    @Field(key: "onboarding_step_completed")
+    var onboardingStepCompleted: Int
 
     init() {}
 
@@ -78,6 +84,7 @@ final class Customer: Model, Content, @unchecked Sendable {
         self.monthlyRevenue = tier == "professional" ? 249.0 : 99.0
         self.churnedThisMonth = false
         self.hubspotConnected = false
+        self.onboardingStepCompleted = 0
     }
 }
 

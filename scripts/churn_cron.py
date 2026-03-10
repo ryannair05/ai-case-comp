@@ -1,6 +1,9 @@
 """
 Churn detection cron job.
-Run via Railway cron or Supabase Edge Functions every Monday 7am EST.
+Run via Railway cron or any scheduler every Monday 7am EST.
+
+Calls the Swift Vapor API instead of direct Supabase access.
+Requires: httpx (pip install httpx)
 
 Flags:
   - >30% usage drop in last 7 days
@@ -8,13 +11,13 @@ Flags:
   - NPS < 40
 
 At $2,800 LTV per customer, saving 1-2 accounts/week = $2,800-5,600 preserved LTV.
-Build time: ~5 hours. Highest ROI Phase 1 build.
 """
 import asyncio
 import os
-import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
+
+import httpx
 
 # Load .env.local from repo root before anything else
 _repo_root = Path(__file__).parent.parent
@@ -28,14 +31,9 @@ for _env_name in (".env.local", ".env"):
                 os.environ.setdefault(key.strip(), val.strip())
         break
 
-sys.path.insert(0, str(_repo_root / "backend"))
-
-import httpx
-from supabase import create_client
-
-USAGE_DROP_THRESHOLD = 0.30  # 30%
-INACTIVITY_DAYS = 7
-NPS_ALARM = 40
+API_URL = os.environ.get("NEXT_PUBLIC_API_URL", "http://localhost:8080")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "demo@liontown.com")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "liontown2025!")
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
 
 
@@ -48,94 +46,42 @@ async def send_slack_alert(message: str) -> None:
 
 
 async def run_churn_detection() -> None:
-    supabase = create_client(
-        os.environ["NEXT_PUBLIC_SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
-    )
+    print(f"[{datetime.utcnow().isoformat()}] Running churn detection via Vapor API...")
+    print(f"   API: {API_URL}\n")
 
-    cutoff_7d = (datetime.utcnow() - timedelta(days=INACTIVITY_DAYS)).isoformat()
-    cutoff_14d = (datetime.utcnow() - timedelta(days=14)).isoformat()
-
-    print(f"[{datetime.utcnow().isoformat()}] Running churn detection...")
-
-    customers_result = (
-        supabase.table("customers")
-        .select("id, name, email, tier, proposals_indexed")
-        .eq("status", "active")
-        .execute()
-    )
-
-    flagged = []
-    for customer in customers_result.data or []:
-        cid = customer["id"]
-
-        # Proposals last 7 days
-        recent = (
-            supabase.table("proposals")
-            .select("id", count="exact")
-            .eq("customer_id", cid)
-            .gte("created_at", cutoff_7d)
-            .execute()
+    async with httpx.AsyncClient(base_url=API_URL, timeout=30.0) as http:
+        # 1. Authenticate
+        res = await http.post(
+            "/auth/login",
+            json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
         )
-        # Proposals prior 7 days
-        prior = (
-            supabase.table("proposals")
-            .select("id", count="exact")
-            .eq("customer_id", cid)
-            .gte("created_at", cutoff_14d)
-            .lt("created_at", cutoff_7d)
-            .execute()
-        )
+        res.raise_for_status()
+        token = res.json()["token"]
+        headers = {"Authorization": f"Bearer {token}"}
 
-        recent_count = recent.count or 0
-        prior_count = prior.count or 0
+        # 2. Trigger churn detection via the Vapor API
+        res = await http.post("/churn/detect", headers=headers)
+        res.raise_for_status()
+        result = res.json()
 
-        usage_drop_pct = 0.0
-        if prior_count > 0:
-            usage_drop_pct = (prior_count - recent_count) / prior_count
-        elif recent_count == 0:
-            usage_drop_pct = 1.0
+        customers_scanned = result.get("customers_scanned", 0)
+        flagged = result.get("flagged", 0)
 
-        # Last active date
-        last_prop = (
-            supabase.table("proposals")
-            .select("created_at")
-            .eq("customer_id", cid)
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        if last_prop.data:
-            last_active = datetime.fromisoformat(
-                last_prop.data[0]["created_at"].replace("Z", "+00:00")
-            ).replace(tzinfo=None)
-            days_inactive = (datetime.utcnow() - last_active).days
-        else:
-            days_inactive = 999
+        print(f"Churn detection complete: {flagged} accounts flagged out of {customers_scanned} active.")
 
-        should_flag = usage_drop_pct >= USAGE_DROP_THRESHOLD or days_inactive >= INACTIVITY_DAYS
-
-        if should_flag:
-            # Log to churn_signals
-            supabase.table("churn_signals").insert(
-                {
-                    "customer_id": cid,
-                    "usage_drop_pct": round(usage_drop_pct, 4),
-                    "days_inactive": days_inactive,
-                }
-            ).execute()
-
-            message = (
-                f"🚨 At-risk account: {customer['name']} ({customer['tier']})\n"
-                f"Usage drop: {usage_drop_pct:.0%} | "
-                f"Inactive: {days_inactive} days | "
-                f"Proposals indexed: {customer.get('proposals_indexed', 0)}"
-            )
-            await send_slack_alert(message)
-            print(f"  FLAGGED: {customer['name']} — {message}")
-            flagged.append(customer)
-
-    print(f"\nChurn detection complete: {len(flagged)} accounts flagged out of {len(customers_result.data or [])} active.")
+        if flagged > 0:
+            # 3. Get the latest churn signals
+            res = await http.get("/churn/signals", headers=headers)
+            if res.status_code == 200:
+                signals = res.json()
+                for signal in signals[:5]:  # Show top 5
+                    message = (
+                        f"🚨 At-risk account flagged\n"
+                        f"Usage drop: {signal.get('usage_drop_pct', 0):.0f}% | "
+                        f"Inactive: {signal.get('days_inactive', 0)} days"
+                    )
+                    await send_slack_alert(message)
+                    print(f"  FLAGGED: {message}")
 
 
 if __name__ == "__main__":

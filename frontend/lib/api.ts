@@ -107,6 +107,15 @@ export const ingestApi = {
     return res.json();
   },
   jobStatus: (jobId: string) => apiRequest<any>(`/ingest/job/${jobId}`),
+  uploadBrandVoice: (exampleText: string, styleNotes?: string, toneTags?: string) =>
+    apiRequest<any>("/ingest/brand-voice", {
+      method: "POST",
+      body: JSON.stringify({
+        example_text: exampleText,
+        style_notes: styleNotes,
+        tone_tags: toneTags,
+      }),
+    }),
 };
 
 // ---------------------------------------------------------------------------
@@ -156,7 +165,31 @@ export const exportApi = {
 };
 
 // ---------------------------------------------------------------------------
-// GTM Agent (Phase 2)
+// Churn
+// ---------------------------------------------------------------------------
+
+export const churnApi = {
+  listSignals: () => apiRequest<any[]>("/churn/signals"),
+  runDetection: () => apiRequest<any>("/churn/detect", { method: "POST" }),
+};
+
+// ---------------------------------------------------------------------------
+// Pipedrive CRM
+// ---------------------------------------------------------------------------
+
+export const pipedriveApi = {
+  status: () => apiRequest<any>("/crm/pipedrive/status"),
+  saveApiKey: (apiKey: string) =>
+    apiRequest<any>("/crm/pipedrive/save-key", {
+      method: "POST",
+      body: JSON.stringify({ api_key: apiKey }),
+    }),
+  syncDeal: (proposalId: string, clientName: string, valueUsd?: number, outcome?: string) =>
+    apiRequest<any>("/crm/pipedrive/sync-deal", {
+      method: "POST",
+      body: JSON.stringify({ proposal_id: proposalId, client_name: clientName, value_usd: valueUsd, outcome }),
+    }),
+};
 // ---------------------------------------------------------------------------
 
 export const gtmApi = {

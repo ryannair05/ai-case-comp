@@ -1,14 +1,73 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap');
 
 :root {
-  --brand-navy: #0B1929;
-  --brand-teal: #00BFA5;
-  --brand-amber: #FFB300;
+  --ink: #0A0A0F;
+  --bone: #F0EDE6;
+  --amber: #E8C547;
+  --jade: #4EC994;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--ink);
+  color: var(--bone);
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Base tailwind elements overriden to dark-mode by default */
+.bg-white {
+  background-color: theme('colors.ink.1') !important;
+}
+
+.bg-gray-50 {
+  background-color: theme('colors.ink.DEFAULT') !important;
+}
+
+.bg-gray-100 {
+  background-color: theme('colors.ink.2') !important;
+}
+
+.bg-gray-900 {
+  background-color: theme('colors.ink.2') !important;
+}
+
+.text-gray-900 {
+  color: theme('colors.bone.DEFAULT') !important;
+}
+
+.text-gray-800 {
+  color: theme('colors.bone.DEFAULT') !important;
+}
+
+.text-gray-700 {
+  color: theme('colors.bone.dim') !important;
+}
+
+.text-gray-600 {
+  color: theme('colors.bone.dim') !important;
+}
+
+.text-gray-500 {
+  color: theme('colors.bone.faint') !important;
+}
+
+.border-gray-100 {
+  border-color: theme('colors.ink.3') !important;
+}
+
+.border-gray-200 {
+  border-color: theme('colors.ink.3') !important;
+}
+
+.border-b {
+  border-color: theme('colors.ink.3') !important;
+}
+
+/* Custom dynamic UI classes for a premium feel */
+.glass-panel {
+  background: rgba(17, 17, 24, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(240, 237, 230, 0.08);
 }
