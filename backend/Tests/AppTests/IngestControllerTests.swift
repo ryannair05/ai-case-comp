@@ -14,29 +14,29 @@ struct PDFTextExtractionTests {
     private var minimalPDFData: Data {
         // This is a real, parseable PDF 1.4 document whose content stream reads "Hello Draftly"
         let pdfString = """
-        %PDF-1.4
-        1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
-        2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
-        3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj
-        4 0 obj<</Length 44>>
-        stream
-        BT /F1 12 Tf 72 720 Td (Hello Draftly) Tj ET
-        endstream
-        endobj
-        5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
-        xref
-        0 6
-        0000000000 65535 f\r
-        0000000009 00000 n\r
-        0000000058 00000 n\r
-        0000000115 00000 n\r
-        0000000274 00000 n\r
-        0000000370 00000 n\r
-        trailer<</Size 6/Root 1 0 R>>
-        startxref
-        441
-        %%EOF
-        """
+            %PDF-1.4
+            1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+            2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+            3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj
+            4 0 obj<</Length 44>>
+            stream
+            BT /F1 12 Tf 72 720 Td (Hello Draftly) Tj ET
+            endstream
+            endobj
+            5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
+            xref
+            0 6
+            0000000000 65535 f\r
+            0000000009 00000 n\r
+            0000000058 00000 n\r
+            0000000115 00000 n\r
+            0000000274 00000 n\r
+            0000000370 00000 n\r
+            trailer<</Size 6/Root 1 0 R>>
+            startxref
+            441
+            %%EOF
+            """
         return Data(pdfString.utf8)
     }
 
@@ -45,13 +45,8 @@ struct PDFTextExtractionTests {
         let result = IngestController.extractPDFText(from: minimalPDFData)
         // If pdftotext is installed (CI has poppler), it extracts the text.
         // If not installed, the fallback fires — but must not return the failure sentinel.
-        let sentinel = "[PDF text extraction failed — install poppler-utils]"
         // Either way we must get something non-empty and non-binary-garbage
         #expect(!result.isEmpty)
-        // Fallback may return the sentinel only if the PDF contains zero printable bytes —
-        // but our PDF has plenty of ASCII text in the stream, so even fallback wins.
-        // Only the pure-binary test below should hit the sentinel.
-        _ = result // exercise the code path
     }
 
     @Test("extractPDFText with pdftotext returns 'Hello Draftly' when poppler is available")
@@ -109,11 +104,11 @@ struct CSVIngestIntegrationTests {
             let auth = try await registerTestCustomer(app: app)
 
             let csvBody = """
-            service_type,price_usd,won,notes
-            brand_strategy,12000,true,Enterprise client
-            social_media_audit,4500,true,Standard package
-            full_service_retainer,8500,false,Lost to price
-            """
+                service_type,price_usd,won,notes
+                brand_strategy,12000,true,Enterprise client
+                social_media_audit,4500,true,Standard package
+                full_service_retainer,8500,false,Lost to price
+                """
 
             let res = try await app.sendRequest(.POST, "/ingest/pricing-csv") { req in
                 req.headers.bearerAuthorization = .init(token: auth.token)
@@ -122,7 +117,8 @@ struct CSVIngestIntegrationTests {
             }
 
             #expect(res.status == .ok)
-            let json = try JSONSerialization.jsonObject(with: Data(buffer: res.body)) as! [String: Any]
+            let json =
+                try JSONSerialization.jsonObject(with: Data(buffer: res.body)) as! [String: Any]
             #expect(json["job_id"] != nil)
             #expect(json["status"] as? String == "queued")
             let rowsQueued = json["rows_queued"] as? Int
@@ -137,11 +133,11 @@ struct CSVIngestIntegrationTests {
 
             // Only one valid row (has both service_type and price_usd)
             let csvBody = """
-            service_type,price_usd
-            brand_strategy,12000
-            ,
-            bad_row_only
-            """
+                service_type,price_usd
+                brand_strategy,12000
+                ,
+                bad_row_only
+                """
 
             let res = try await app.sendRequest(.POST, "/ingest/pricing-csv") { req in
                 req.headers.bearerAuthorization = .init(token: auth.token)
@@ -150,7 +146,8 @@ struct CSVIngestIntegrationTests {
             }
 
             #expect(res.status == .ok)
-            let json = try JSONSerialization.jsonObject(with: Data(buffer: res.body)) as! [String: Any]
+            let json =
+                try JSONSerialization.jsonObject(with: Data(buffer: res.body)) as! [String: Any]
             // Only the first row is valid
             let rowsQueued = json["rows_queued"] as? Int
             #expect(rowsQueued == 1)
@@ -196,7 +193,8 @@ struct BrandVoiceIngestIntegrationTests {
             let auth = try await registerTestCustomer(app: app)
 
             let body = try JSONSerialization.data(withJSONObject: [
-                "example_text": "At LionTown Marketing, every dollar of marketing spend is accountable. Results you can measure, stories worth telling.",
+                "example_text":
+                    "At LionTown Marketing, every dollar of marketing spend is accountable. Results you can measure, stories worth telling.",
                 "style_notes": "authoritative, data-driven, warm",
                 "tone_tags": "professional,analytical",
             ])
@@ -208,7 +206,8 @@ struct BrandVoiceIngestIntegrationTests {
             }
 
             #expect(res.status == .ok)
-            let json = try JSONSerialization.jsonObject(with: Data(buffer: res.body)) as! [String: Any]
+            let json =
+                try JSONSerialization.jsonObject(with: Data(buffer: res.body)) as! [String: Any]
             let jobId = json["job_id"] as? String
             #expect(jobId != nil)
             #expect(!jobId!.isEmpty)
@@ -223,14 +222,16 @@ struct BrandVoiceIngestIntegrationTests {
 
             // Create a job via brand-voice ingest
             let body = try JSONSerialization.data(withJSONObject: [
-                "example_text": "Test brand voice content for job status polling.",
+                "example_text": "Test brand voice content for job status polling."
             ])
             let ingestRes = try await app.sendRequest(.POST, "/ingest/brand-voice") { req in
                 req.headers.contentType = .json
                 req.headers.bearerAuthorization = .init(token: auth.token)
                 req.body = .init(data: body)
             }
-            let ingestJson = try JSONSerialization.jsonObject(with: Data(buffer: ingestRes.body)) as! [String: Any]
+            let ingestJson =
+                try JSONSerialization.jsonObject(with: Data(buffer: ingestRes.body))
+                as! [String: Any]
             let jobId = ingestJson["job_id"] as! String
 
             // Poll job status
@@ -238,7 +239,9 @@ struct BrandVoiceIngestIntegrationTests {
                 req.headers.bearerAuthorization = .init(token: auth.token)
             }
             #expect(statusRes.status == .ok)
-            let statusJson = try JSONSerialization.jsonObject(with: Data(buffer: statusRes.body)) as! [String: Any]
+            let statusJson =
+                try JSONSerialization.jsonObject(with: Data(buffer: statusRes.body))
+                as! [String: Any]
             let id = statusJson["id"] as? String
             #expect(id == jobId)
         }
@@ -265,14 +268,16 @@ struct BrandVoiceIngestIntegrationTests {
 
             // Customer 1 creates a brand voice job
             let body = try JSONSerialization.data(withJSONObject: [
-                "example_text": "Customer one brand voice isolation test.",
+                "example_text": "Customer one brand voice isolation test."
             ])
             let ingestRes = try await app.sendRequest(.POST, "/ingest/brand-voice") { req in
                 req.headers.contentType = .json
                 req.headers.bearerAuthorization = .init(token: auth1.token)
                 req.body = .init(data: body)
             }
-            let ingestJson = try JSONSerialization.jsonObject(with: Data(buffer: ingestRes.body)) as! [String: Any]
+            let ingestJson =
+                try JSONSerialization.jsonObject(with: Data(buffer: ingestRes.body))
+                as! [String: Any]
             let jobId = ingestJson["job_id"] as! String
 
             // Customer 2 tries to read it — must get 404

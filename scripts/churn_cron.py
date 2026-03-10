@@ -2,7 +2,7 @@
 Churn detection cron job.
 Run via Railway cron or any scheduler every Monday 7am EST.
 
-Calls the Swift Vapor API instead of direct Supabase access.
+Calls the Swift Vapor API
 Requires: httpx (pip install httpx)
 
 Flags:

@@ -11,6 +11,10 @@ struct SupportController {
         let body: String
     }
 
+    struct ReplyRequest: Content {
+        let message: String
+    }
+
     // MARK: - Create ticket + triage
 
     @Sendable
@@ -83,7 +87,7 @@ struct SupportController {
         return ticket
     }
 
-    // MARK: - List tickets
+    // MARK: - List tickets (customer's own)
 
     @Sendable
     func listTickets(_ req: Request) async throws -> [SupportTicket] {
@@ -95,5 +99,102 @@ struct SupportController {
             query = query.filter(\.$status == status)
         }
         return try await query.all()
+    }
+
+    // MARK: - Admin: list ALL tickets with filters + pagination
+
+    @Sendable
+    func listAllTickets(_ req: Request) async throws -> Response {
+        // Require admin
+        let customer = try await req.authenticatedCustomer()
+        guard customer.isAdmin else {
+            throw Abort(.forbidden, reason: "Admin access required")
+        }
+
+        var query = SupportTicket.query(on: req.db).sort(\.$createdAt, .descending)
+
+        if let severity = req.query[String.self, at: "severity"] {
+            query = query.filter(\.$severity == severity)
+        }
+        if let status = req.query[String.self, at: "status"] {
+            query = query.filter(\.$status == status)
+        }
+
+        let page = (req.query[Int.self, at: "page"] ?? 1)
+        let perPage = 20
+        let offset = (page - 1) * perPage
+
+        let tickets = try await query.range(offset..<(offset + perPage)).all()
+        let total = try await SupportTicket.query(on: req.db).count()
+
+        // Enrich with customer info
+        var enriched: [[String: Any]] = []
+        for ticket in tickets {
+            let cust = try? await Customer.find(ticket.customerId, on: req.db)
+            var t: [String: Any] = [
+                "id": ticket.id?.uuidString ?? "",
+                "customer_id": ticket.customerId.uuidString,
+                "customer_name": cust?.name ?? "Unknown",
+                "customer_tier": cust?.tier ?? "unknown",
+                "subject": ticket.subject ?? "",
+                "body": ticket.body,
+                "status": ticket.status,
+                "severity": ticket.severity,
+                "ai_response": ticket.aiResponse ?? "",
+                "admin_reply": ticket.adminReply ?? "",
+            ]
+            if let createdAt = ticket.createdAt {
+                t["created_at"] = ISO8601DateFormatter().string(from: createdAt)
+            }
+            if let resolvedAt = ticket.resolvedAt {
+                t["resolved_at"] = ISO8601DateFormatter().string(from: resolvedAt)
+            }
+            enriched.append(t)
+        }
+
+        let result: [String: Any] = [
+            "tickets": enriched,
+            "total": total,
+            "page": page,
+            "per_page": perPage,
+        ]
+        return try await result.encodeResponse(for: req)
+    }
+
+    // MARK: - Admin: reply to ticket
+
+    @Sendable
+    func replyToTicket(_ req: Request) async throws -> SupportTicket {
+        let customer = try await req.authenticatedCustomer()
+        guard customer.isAdmin else {
+            throw Abort(.forbidden, reason: "Admin access required")
+        }
+        let ticketId = try req.parameters.require("id", as: UUID.self)
+        guard let ticket = try await SupportTicket.find(ticketId, on: req.db) else {
+            throw Abort(.notFound, reason: "Ticket not found")
+        }
+        let body = try req.content.decode(ReplyRequest.self)
+        ticket.adminReply = body.message
+        ticket.status = "ai_handled"
+        try await ticket.save(on: req.db)
+        return ticket
+    }
+
+    // MARK: - Admin: resolve ticket
+
+    @Sendable
+    func resolveTicket(_ req: Request) async throws -> SupportTicket {
+        let customer = try await req.authenticatedCustomer()
+        guard customer.isAdmin else {
+            throw Abort(.forbidden, reason: "Admin access required")
+        }
+        let ticketId = try req.parameters.require("id", as: UUID.self)
+        guard let ticket = try await SupportTicket.find(ticketId, on: req.db) else {
+            throw Abort(.notFound, reason: "Ticket not found")
+        }
+        ticket.status = "closed"
+        ticket.resolvedAt = Date()
+        try await ticket.save(on: req.db)
+        return ticket
     }
 }

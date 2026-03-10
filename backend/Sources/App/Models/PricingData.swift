@@ -1,7 +1,7 @@
 import Fluent
 import Vapor
 
-/// Pricing data row — replaces Supabase `pricing_data` table.
+/// Pricing data row
 final class PricingData: Model, Content, @unchecked Sendable {
     static let schema = "pricing_data"
 
@@ -28,7 +28,10 @@ final class PricingData: Model, Content, @unchecked Sendable {
 
     init() {}
 
-    init(customerId: UUID, serviceType: String, priceUsd: Double, won: Bool? = nil, notes: String? = nil) {
+    init(
+        customerId: UUID, serviceType: String, priceUsd: Double, won: Bool? = nil,
+        notes: String? = nil
+    ) {
         self.customerId = customerId
         self.serviceType = serviceType
         self.priceUsd = priceUsd

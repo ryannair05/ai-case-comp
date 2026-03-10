@@ -39,12 +39,14 @@ struct ProposalController {
         let outcome: String?
         let winReason: String?
         let loseReason: String?
+        let qualityScore: Int?
         enum CodingKeys: String, CodingKey {
             case title, content, outcome
             case clientName = "client_name"
             case valueUsd = "value_usd"
             case winReason = "win_reason"
             case loseReason = "lose_reason"
+            case qualityScore = "quality_score"
         }
     }
 
@@ -213,6 +215,7 @@ struct ProposalController {
         if let o = body.outcome { proposal.outcome = o }
         if let w = body.winReason { proposal.winReason = w }
         if let l = body.loseReason { proposal.loseReason = l }
+        if let q = body.qualityScore { proposal.qualityScore = q }
         try await proposal.save(on: req.db)
 
         // Winning proposal → update playbook in background

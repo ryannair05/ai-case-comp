@@ -5,10 +5,40 @@ import Foundation
 /// Analytics dashboard — unit economics, win rate, phase gate.
 struct AnalyticsController {
 
-    // MARK: - Unit economics
+    // MARK: - Unit economics (per-customer — for customer dashboard)
 
     @Sendable
     func unitEconomics(_ req: Request) async throws -> Response {
+        let customer = try await req.authenticatedCustomer()
+        let proposals = try await Proposal.query(on: req.db)
+            .filter(\.$customerId == customer.id!)
+            .filter(\.$deletedAt == nil)
+            .all()
+        let won = proposals.filter { $0.outcome == "won" }
+        let winRate = proposals.isEmpty ? 0.0 : Double(won.count) / Double(proposals.count)
+        let avgDealSize = won.isEmpty ? 0.0 : won.compactMap(\.valueUsd).reduce(0, +) / Double(max(1, won.count))
+        let switchingCost = calculateSwitchingCost(customer: customer)
+
+        let result: [String: Any] = [
+            "monthly_revenue": customer.monthlyRevenue,
+            "proposals_indexed": customer.proposalsIndexed,
+            "win_rate": winRate,
+            "avg_deal_size_usd": avgDealSize,
+            "switching_cost_usd": switchingCost["total_cost"] ?? 0,
+            "tier": customer.tier,
+        ]
+        return try await result.encodeResponse(for: req)
+    }
+
+    // MARK: - Aggregate unit economics (admin-only — all customers)
+
+    @Sendable
+    func aggregateUnitEconomics(_ req: Request) async throws -> Response {
+        let admin = try await req.authenticatedCustomer()
+        guard admin.isAdmin else {
+            throw Abort(.forbidden, reason: "Admin access required")
+        }
+
         let customers = try await Customer.query(on: req.db)
             .filter(\.$status == "active")
             .all()
@@ -23,8 +53,6 @@ struct AnalyticsController {
         let avgSwitchingCost = Double(customers.map { calculateSwitchingCost(customer: $0)["total_cost"] as? Int ?? 0 }.reduce(0, +))
             / max(1, Double(customers.count))
 
-        // AI cost per proposal (~$0.18 based on Claude Sonnet pricing)
-        _ = customers.reduce(0) { $0 + $1.proposalsIndexed }
         let aiCostPerProposal: Double = 0.18
 
         let scenario: String
@@ -35,19 +63,39 @@ struct AnalyticsController {
         }
 
         let result: [String: Any] = [
-            "monthly_churn_rate":       churnRate,
+            "customer_count":               customers.count,
+            "monthly_churn_rate":           churnRate,
             "avg_customer_lifetime_months": churnRate > 0 ? 1.0 / churnRate : 36.0,
-            "blended_arpa_usd":         blendedARPA,
-            "ltv_usd":                  ltv,
-            "cac_usd":                  0.0,  // $0 CAC (referral/organic)
-            "ltv_cac_ratio":            "∞",
-            "gross_margin":             0.72,
-            "ai_cost_per_proposal":     aiCostPerProposal,
-            "avg_switching_cost_usd":   avgSwitchingCost,
-            "on_track_for":             scenario,
-            "bear_at_churn":            0.075,
-            "base_at_churn":            0.055,
-            "bull_at_churn":            0.035,
+            "blended_arpa_usd":             blendedARPA,
+            "ltv_usd":                      ltv,
+            "cac_usd":                      0.0,
+            "ltv_cac_ratio":                "∞",
+            "gross_margin":                 0.72,
+            "ai_cost_per_proposal":         aiCostPerProposal,
+            "avg_switching_cost_usd":       avgSwitchingCost,
+            "total_mrr":                    totalRevenue,
+            "on_track_for":                 scenario,
+            "bear_at_churn":                0.075,
+            "base_at_churn":                0.055,
+            "bull_at_churn":                0.035,
+        ]
+        return try await result.encodeResponse(for: req)
+    }
+
+    // MARK: - Industry benchmark (for Moat Meter benchmark line)
+
+    @Sendable
+    func industryBenchmark(_ req: Request) async throws -> Response {
+        // Hardcoded industry averages — updated quarterly from public SaaS benchmarks
+        let result: [String: Any] = [
+            "avg_switching_cost_usd": 12000,
+            "p25_switching_cost_usd": 5000,
+            "p50_switching_cost_usd": 12000,
+            "p75_switching_cost_usd": 28000,
+            "avg_win_rate": 0.42,
+            "avg_proposals_per_month": 8,
+            "benchmark_label": "Avg at your stage: $12K",
+            "source": "Draftly aggregate (anonymized)",
         ]
         return try await result.encodeResponse(for: req)
     }

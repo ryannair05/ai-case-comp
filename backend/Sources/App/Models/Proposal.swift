@@ -1,7 +1,7 @@
 import Fluent
 import Vapor
 
-/// Proposal record — replaces Supabase `proposals` table.
+/// Proposal record
 final class Proposal: Model, Content, @unchecked Sendable {
     static let schema = "proposals"
 
@@ -38,6 +38,9 @@ final class Proposal: Model, Content, @unchecked Sendable {
 
     @OptionalField(key: "deleted_at")
     var deletedAt: Date?
+
+    @OptionalField(key: "quality_score")
+    var qualityScore: Int?
 
     init() {}
 

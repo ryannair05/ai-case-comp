@@ -8,7 +8,16 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ["Fraunces", "Georgia", "serif"],
+        sans: ["DM Sans", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "Menlo", "monospace"],
+      },
       colors: {
+        vellum: {
+          DEFAULT: "#F7F5EF",
+          border: "#E4E0D6",
+        },
         ink: {
           DEFAULT: "#0A0A0F",
           1: "#111118",
@@ -29,14 +38,10 @@ const config: Config = {
           DEFAULT: "#4EC994",
           dim: "rgba(78,201,148,0.15)",
         },
-        red: {
-          dim: "#C44D4D",
-          faint: "rgba(196,77,77,0.12)",
-        },
       },
       backgroundImage: {
-        'gradient-premium': 'linear-gradient(to bottom, #0A0A0F, #111118)',
-      }
+        "gradient-premium": "linear-gradient(to bottom, #0A0A0F, #111118)",
+      },
     },
   },
   plugins: [],

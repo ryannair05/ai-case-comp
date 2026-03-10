@@ -14,14 +14,56 @@ struct ContextMapperController {
             .filter(\.$customerId == customer.id!).count()
         let brandCount = try await BrandVoice.query(on: req.db)
             .filter(\.$customerId == customer.id!).count()
-        let result: [String: Any] = [
+
+        let indexed = customer.proposalsIndexed
+        let milestoneTarget: Int
+        let nextMilestone: String
+        switch indexed {
+        case 0..<5:
+            milestoneTarget = 5
+            nextMilestone = "embedded"
+        case 5..<15:
+            milestoneTarget = 15
+            nextMilestone = "context_mapper_active"
+        case 15..<20:
+            milestoneTarget = 20
+            nextMilestone = "entrenched"
+        default:
+            milestoneTarget = 50
+            nextMilestone = "irreplaceable"
+        }
+
+        let proposalsToNext = max(0, milestoneTarget - indexed)
+        let milestonePct = milestoneTarget > 0
+            ? min(100, Int(Double(indexed) / Double(milestoneTarget) * 100))
+            : 100
+
+        // Estimate days to next milestone based on proposals/week (last 30 days)
+        let thirtyDaysAgo = Date().addingTimeInterval(-30 * 24 * 3600)
+        let recentCount = (try? await Proposal.query(on: req.db)
+            .filter(\.$customerId == customer.id!)
+            .filter(\.$createdAt >= thirtyDaysAgo)
+            .count()) ?? 0
+        let proposalsPerDay = Double(recentCount) / 30.0
+        let estimatedDays = proposalsPerDay > 0
+            ? Int(ceil(Double(proposalsToNext) / proposalsPerDay))
+            : nil
+
+        var result: [String: Any] = [
             "context_mapper_active": customer.contextMapperActive,
-            "proposals_indexed": customer.proposalsIndexed,
+            "proposals_indexed": indexed,
             "pricing_rows": pricingCount,
             "brand_examples": brandCount,
             "tier": customer.tier,
             "namespace": "customer_\(customer.id!.uuidString)",
+            "next_milestone": nextMilestone,
+            "proposals_to_next_milestone": proposalsToNext,
+            "milestone_progress_pct": milestonePct,
+            "milestone_target": milestoneTarget,
         ]
+        if let days = estimatedDays {
+            result["estimated_days_to_milestone"] = days
+        }
         return try await result.encodeResponse(for: req)
     }
 

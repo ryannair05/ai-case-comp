@@ -1,7 +1,7 @@
 import Fluent
 import Vapor
 
-/// Churn signal — replaces Supabase `churn_signals` table.
+/// Churn signal
 final class ChurnSignal: Model, Content, @unchecked Sendable {
     static let schema = "churn_signals"
 

@@ -42,11 +42,16 @@ func routes(_ app: Application) throws {
     let suppCtrl = SupportController()
     protected.post("support", "tickets", use: suppCtrl.createTicket)
     protected.get("support", "tickets", use: suppCtrl.listTickets)
+    protected.post("support", "tickets", ":id", "reply", use: suppCtrl.replyToTicket)
+    protected.patch("support", "tickets", ":id", "resolve", use: suppCtrl.resolveTicket)
+    protected.get("support", "admin", "tickets", use: suppCtrl.listAllTickets)
 
     // Churn
     let churnCtrl = ChurnController()
     protected.get("churn", "signals", use: churnCtrl.listSignals)
     protected.post("churn", "detect", use: churnCtrl.runDetection)
+    protected.post("churn", "signals", ":id", "retention-email", use: churnCtrl.sendRetentionEmail)
+    protected.get("churn", "admin", "signals", use: churnCtrl.listAllSignals)
 
     // CRM
     let crmCtrl = CRMController()
@@ -55,6 +60,8 @@ func routes(_ app: Application) throws {
     // hubspotConnect requires JWT to encode customer identity into state
     protected.get("crm", "hubspot", "connect", use: crmCtrl.hubspotConnect)
     protected.post("crm", "hubspot", "log-deal", use: crmCtrl.logDeal)
+    protected.get("crm", "hubspot", "status", use: crmCtrl.hubspotStatus)
+    protected.post("crm", "hubspot", "disconnect", use: crmCtrl.hubspotDisconnect)
 
     // Analytics
     let analyticsCtrl = AnalyticsController()
@@ -62,6 +69,8 @@ func routes(_ app: Application) throws {
     protected.get("analytics", "win-rate", use: analyticsCtrl.winRate)
     protected.get("analytics", "phase-gate", use: analyticsCtrl.phaseGate)
     protected.get("analytics", "roi-summary", use: analyticsCtrl.roiSummary)
+    protected.get("analytics", "aggregate-unit-economics", use: analyticsCtrl.aggregateUnitEconomics)
+    protected.get("analytics", "industry-benchmark", use: analyticsCtrl.industryBenchmark)
 
     // Export (GDPR data portability)
     let exportCtrl = ExportController()
@@ -72,6 +81,8 @@ func routes(_ app: Application) throws {
     let gtmCtrl = GTMController()
     protected.post("gtm", "meeting-signals", use: gtmCtrl.extractMeetingSignals)
     protected.post("gtm", "outreach-sequence", use: gtmCtrl.generateOutreachSequence)
+    protected.get("gtm", "deal-signals", use: gtmCtrl.listDealSignals)
+    protected.patch("gtm", "deal-signals", ":id", "stage", use: gtmCtrl.updateDealStage)
 
     // Pipedrive CRM integration
     let pipedriveCtrl = PipedriveController()

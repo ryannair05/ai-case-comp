@@ -6,10 +6,10 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/moat-meter", "/roi-email", "/proposals"];
+const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/moat-meter", "/roi-email", "/proposals", "/admin", "/billing", "/settings", "/gtm"];
 const AUTH_PREFIXES = ["/login", "/signup"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Read JWT from cookie (set on login)

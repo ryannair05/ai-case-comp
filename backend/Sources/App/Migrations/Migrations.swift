@@ -21,6 +21,7 @@ struct CreateCustomer: AsyncMigration {
             .field("created_at", .datetime)
             .field("pipedrive_api_key", .string)
             .field("onboarding_step_completed", .int, .required, .sql(.default(0)))
+            .field("is_admin", .bool, .required, .sql(.default(false)))
             .unique(on: "email")
             .create()
     }
@@ -44,6 +45,7 @@ struct CreateProposal: AsyncMigration {
             .field("lose_reason", .string)
             .field("created_at", .datetime)
             .field("deleted_at", .datetime)
+            .field("quality_score", .int)
             .create()
     }
 
@@ -99,6 +101,7 @@ struct CreateSupportTicket: AsyncMigration {
             .field("severity", .string, .required, .sql(.default("low")))
             .field("created_at", .datetime)
             .field("resolved_at", .datetime)
+            .field("admin_reply", .sql(unsafeRaw: "TEXT"))
             .create()
     }
 
@@ -163,5 +166,26 @@ struct CreateJobRecord: AsyncMigration {
 
     func revert(on database: any Database) async throws {
         try await database.schema("job_records").delete()
+    }
+}
+
+struct CreateDealSignal: AsyncMigration {
+    func prepare(on database: any Database) async throws {
+        try await database.schema("deal_signals")
+            .id()
+            .field("customer_id", .uuid, .required)
+            .field("client_name", .string, .required)
+            .field("stage", .string, .required, .sql(.default("discovery")))
+            .field("budget_signals", .sql(unsafeRaw: "TEXT"), .required)
+            .field("needs_identified", .sql(unsafeRaw: "TEXT"), .required)
+            .field("objections", .sql(unsafeRaw: "TEXT"), .required)
+            .field("next_actions", .sql(unsafeRaw: "TEXT"), .required)
+            .field("proposal_recommended", .bool, .required, .sql(.default(false)))
+            .field("created_at", .datetime)
+            .create()
+    }
+
+    func revert(on database: any Database) async throws {
+        try await database.schema("deal_signals").delete()
     }
 }

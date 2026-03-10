@@ -72,6 +72,30 @@ struct CRMController {
         return req.redirect(to: "/dashboard?crm=connected")
     }
 
+    // MARK: - HubSpot status
+
+    @Sendable
+    func hubspotStatus(_ req: Request) async throws -> Response {
+        let customer = try await req.authenticatedCustomer()
+        let result: [String: Any] = [
+            "connected": customer.hubspotConnected,
+            "email": customer.email,
+        ]
+        return try await result.encodeResponse(for: req)
+    }
+
+    // MARK: - HubSpot disconnect
+
+    @Sendable
+    func hubspotDisconnect(_ req: Request) async throws -> Response {
+        let customer = try await req.authenticatedCustomer()
+        customer.hubspotConnected = false
+        customer.hubspotToken = nil
+        try await customer.save(on: req.db)
+        let result: [String: Any] = ["status": "disconnected"]
+        return try await result.encodeResponse(for: req)
+    }
+
     // MARK: - Log a deal
 
     struct LogDealRequest: Content {

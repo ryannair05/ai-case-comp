@@ -127,6 +127,8 @@ export const analyticsApi = {
   winRate: () => apiRequest<any>("/analytics/win-rate"),
   phaseGate: () => apiRequest<any>("/analytics/phase-gate"),
   roiSummary: () => apiRequest<any>("/analytics/roi-summary"),
+  aggregateUnitEconomics: () => apiRequest<any>("/analytics/aggregate-unit-economics"),
+  industryBenchmark: () => apiRequest<any>("/analytics/industry-benchmark"),
 };
 
 // ---------------------------------------------------------------------------
@@ -141,6 +143,21 @@ export const supportApi = {
     }),
   listTickets: (status?: string) =>
     apiRequest<any[]>(`/support/tickets${status ? `?status=${status}` : ""}`),
+  replyToTicket: (ticketId: string, message: string) =>
+    apiRequest<any>(`/support/tickets/${ticketId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
+  resolveTicket: (ticketId: string) =>
+    apiRequest<any>(`/support/tickets/${ticketId}/resolve`, { method: "PATCH" }),
+  listAllTickets: (filters?: { severity?: string; status?: string; page?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.severity) params.set("severity", filters.severity);
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.page) params.set("page", String(filters.page));
+    const qs = params.toString();
+    return apiRequest<any>(`/support/admin/tickets${qs ? `?${qs}` : ""}`);
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -171,6 +188,9 @@ export const exportApi = {
 export const churnApi = {
   listSignals: () => apiRequest<any[]>("/churn/signals"),
   runDetection: () => apiRequest<any>("/churn/detect", { method: "POST" }),
+  sendRetentionEmail: (signalId: string) =>
+    apiRequest<any>(`/churn/signals/${signalId}/retention-email`, { method: "POST" }),
+  listAllSignals: () => apiRequest<any[]>("/churn/admin/signals"),
 };
 
 // ---------------------------------------------------------------------------
@@ -191,6 +211,13 @@ export const pipedriveApi = {
     }),
 };
 // ---------------------------------------------------------------------------
+// CRM
+// ---------------------------------------------------------------------------
+
+export const crmApi = {
+  hubspotStatus: () => apiRequest<any>("/crm/hubspot/status"),
+  hubspotDisconnect: () => apiRequest<any>("/crm/hubspot/disconnect", { method: "POST" }),
+};
 
 export const gtmApi = {
   extractMeetingSignals: (rawNotes: string, clientName: string) =>
@@ -214,5 +241,11 @@ export const gtmApi = {
         pain_point: painPoint,
         sequence_length: sequenceLength,
       }),
+    }),
+  listDealSignals: () => apiRequest<any[]>("/gtm/deal-signals"),
+  updateDealStage: (signalId: string, stage: string) =>
+    apiRequest<any>(`/gtm/deal-signals/${signalId}/stage`, {
+      method: "PATCH",
+      body: JSON.stringify({ stage }),
     }),
 };

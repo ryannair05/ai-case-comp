@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Auth context — uses the Vapor JWT backend instead of Supabase.
+ * Auth context — uses the Vapor JWT backend
  * Stores the JWT token in localStorage under "draftly_token".
  */
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
@@ -14,6 +14,7 @@ interface AuthUser {
   email: string;
   name: string;
   tier: string;
+  isAdmin?: boolean;
 }
 
 interface AuthContextValue {
@@ -29,9 +30,9 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   token: null,
   loading: true,
-  signIn: async () => {},
-  signUp: async () => {},
-  signOut: () => {},
+  signIn: async () => { },
+  signUp: async () => { },
+  signOut: () => { },
 });
 
 /** True when a customer's tier includes Context-Mapper access. */
@@ -100,12 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   }
 
-  function persist(data: { token: string; customer_id: string; email: string; name: string; tier: string }) {
+  function persist(data: { token: string; customer_id: string; email: string; name: string; tier: string; is_admin?: boolean }) {
     const u: AuthUser = {
       customerId: data.customer_id,
       email: data.email,
       name: data.name,
       tier: data.tier,
+      isAdmin: data.is_admin ?? false,
     };
     localStorage.setItem("draftly_token", data.token);
     localStorage.setItem("draftly_user", JSON.stringify(u));

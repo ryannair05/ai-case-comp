@@ -2,7 +2,7 @@ import Fluent
 import JWT
 import Vapor
 
-/// Customer record — replaces Supabase `customers` table.
+/// Customer record
 final class Customer: Model, Content, @unchecked Sendable {
     static let schema = "customers"
 
@@ -62,6 +62,9 @@ final class Customer: Model, Content, @unchecked Sendable {
     @Field(key: "onboarding_step_completed")
     var onboardingStepCompleted: Int
 
+    @Field(key: "is_admin")
+    var isAdmin: Bool
+
     init() {}
 
     init(
@@ -70,7 +73,8 @@ final class Customer: Model, Content, @unchecked Sendable {
         email: String,
         passwordHash: String,
         tier: String = "starter",
-        industry: String? = nil
+        industry: String? = nil,
+        isAdmin: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -85,6 +89,7 @@ final class Customer: Model, Content, @unchecked Sendable {
         self.churnedThisMonth = false
         self.hubspotConnected = false
         self.onboardingStepCompleted = 0
+        self.isAdmin = isAdmin
     }
 }
 

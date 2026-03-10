@@ -238,9 +238,17 @@ struct ClaudeService {
     func extractWinPatterns(proposalContent: String, winReason: String) async throws -> String {
         try await call(
             system:
-                "Extract 3-5 key winning patterns from this proposal and win reason. Be specific and actionable.",
+                "Extract key winning patterns from this proposal and win reason. "
+                + "Return a JSON object with these exact keys: "
+                + "pricing_tier_won (string: 'starter'|'professional'|'gtm_agent'|'enterprise'|'unknown'), "
+                + "client_industry (string), "
+                + "deal_size_usd (number or null), "
+                + "key_objection (string: main objection that was overcome), "
+                + "differentiator_used (string: main differentiator that won the deal), "
+                + "win_patterns (array of 3-5 actionable pattern strings). "
+                + "Return only valid JSON, no markdown.",
             user: "Win reason: \(winReason)\n\nProposal:\n\(String(proposalContent.prefix(3000)))",
-            maxTokens: 500
+            maxTokens: 700
         )
     }
 

@@ -1,7 +1,7 @@
 import Fluent
 import Vapor
 
-/// Support ticket — replaces Supabase `support_tickets` table.
+/// Support ticket
 final class SupportTicket: Model, Content, @unchecked Sendable {
     static let schema = "support_tickets"
 
@@ -33,6 +33,9 @@ final class SupportTicket: Model, Content, @unchecked Sendable {
 
     @OptionalField(key: "resolved_at")
     var resolvedAt: Date?
+
+    @OptionalField(key: "admin_reply")
+    var adminReply: String?
 
     init() {}
 

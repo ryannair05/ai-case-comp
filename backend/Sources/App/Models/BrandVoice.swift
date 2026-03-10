@@ -1,7 +1,7 @@
 import Fluent
 import Vapor
 
-/// Brand voice example — replaces Supabase `brand_voice` table.
+/// Brand voice example
 final class BrandVoice: Model, Content, @unchecked Sendable {
     static let schema = "brand_voice"
 
@@ -25,7 +25,8 @@ final class BrandVoice: Model, Content, @unchecked Sendable {
 
     init() {}
 
-    init(customerId: UUID, exampleText: String, styleNotes: String? = nil, toneTags: String? = nil) {
+    init(customerId: UUID, exampleText: String, styleNotes: String? = nil, toneTags: String? = nil)
+    {
         self.customerId = customerId
         self.exampleText = exampleText
         self.styleNotes = styleNotes

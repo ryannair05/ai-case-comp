@@ -4,7 +4,7 @@ import JWT
 import Vapor
 
 func configure(_ app: Application) async throws {
-    // MARK: - Database (SQLite via Fluent — replaces Supabase)
+    // MARK: - Database
     // In testing, the test helper pre-registers .sqlite(.memory) before calling configure.
     if app.environment != .testing {
         app.databases.use(
@@ -22,6 +22,7 @@ func configure(_ app: Application) async throws {
     app.migrations.add(CreateChurnSignal())
     app.migrations.add(CreateVectorEntry())
     app.migrations.add(CreateJobRecord())
+    app.migrations.add(CreateDealSignal())
     app.migrations.add(AddIndices())
     try await app.autoMigrate()
 

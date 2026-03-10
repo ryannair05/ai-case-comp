@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Draftly Live Demo — Editorial / Intelligence Aesthetic
- * DM Serif Display + JetBrains Mono + Instrument Sans
+ * Draftly Live Demo — Light Editorial Aesthetic
+ * Outfit headings + DM Sans body + JetBrains Mono code
  * Split-screen: Generic GPT vs Draftly Context-Mapper
  */
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -39,7 +39,7 @@ const FEATURES = [
     description: "Every win, loss, and pricing anchor extracted into a private knowledge graph. Grows smarter with every proposal.",
     stat: "73%",
     statLabel: "win rate (Brightfield)",
-    color: "amber",
+    color: "indigo",
   },
   {
     id: "rag-pipeline",
@@ -57,7 +57,7 @@ const FEATURES = [
     description: "Historical deal data surfaces the right price for every engagement. Never leave money on the table again.",
     stat: "$8.5K",
     statLabel: "avg deal value",
-    color: "amber",
+    color: "indigo",
   },
   {
     id: "docx-export",
@@ -119,10 +119,9 @@ async function streamDraftly(
 function TypewriterCursor({ active }: { active: boolean }) {
   return (
     <span
-      className={`inline-block w-[2px] h-[1em] ml-[1px] align-middle ${
-        active ? "animate-[blink_0.7s_step-end_infinite]" : "opacity-0"
-      }`}
-      style={{ background: "currentColor" }}
+      className={`inline-block w-[2px] h-[1em] ml-[1px] align-middle ${active ? "animate-[blink_0.7s_step-end_infinite]" : "opacity-0"
+        }`}
+      style={{ background: "var(--indigo)" }}
     />
   );
 }
@@ -147,8 +146,12 @@ function HighlightedOutput({ text, isTyping }: { text: string; isTyping: boolean
           return (
             <mark
               key={i}
-              className="bg-transparent text-amber-300 font-semibold not-italic"
-              style={{ textShadow: "0 0 12px rgba(232,197,71,0.4)" }}
+              style={{
+                background: "transparent",
+                color: "var(--indigo)",
+                fontWeight: 600,
+                fontStyle: "normal",
+              }}
             >
               {part}
             </mark>
@@ -235,72 +238,11 @@ export default function DemoPage() {
 
   return (
     <>
-      {/* ── Global styles injected via style tag ── */}
+      {/* ── Scoped styles ── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap');
-
-        :root {
-          --ink: #0A0A0F;
-          --ink-1: #111118;
-          --ink-2: #1A1A24;
-          --ink-3: #242432;
-          --bone: #F0EDE6;
-          --bone-dim: #9B9790;
-          --bone-faint: #3A3A48;
-          --amber: #E8C547;
-          --amber-dim: rgba(232,197,71,0.15);
-          --amber-glow: rgba(232,197,71,0.08);
-          --red-dim: #C44D4D;
-          --red-faint: rgba(196,77,77,0.12);
-          --jade: #4EC994;
-          --jade-dim: rgba(78,201,148,0.15);
-          --border: rgba(240,237,230,0.08);
-          --border-strong: rgba(240,237,230,0.16);
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-          background: var(--ink);
-          color: var(--bone);
-          font-family: 'Instrument Sans', sans-serif;
-          -webkit-font-smoothing: antialiased;
-        }
-
-        .serif { font-family: 'DM Serif Display', serif; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-
         @keyframes blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
-        }
-
-        @keyframes grain {
-          0%, 100% { transform: translate(0, 0); }
-          10% { transform: translate(-2%, -3%); }
-          20% { transform: translate(3%, 2%); }
-          30% { transform: translate(-1%, 4%); }
-          40% { transform: translate(4%, -1%); }
-          50% { transform: translate(-3%, 2%); }
-          60% { transform: translate(2%, 3%); }
-          70% { transform: translate(-4%, -2%); }
-          80% { transform: translate(3%, -3%); }
-          90% { transform: translate(-2%, 4%); }
-        }
-
-        @keyframes scanline {
-          0% { top: -10%; }
-          100% { top: 110%; }
-        }
-
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes pulseAmber {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(232,197,71,0.3); }
-          50% { box-shadow: 0 0 20px 4px rgba(232,197,71,0.15); }
         }
 
         @keyframes shimmer {
@@ -308,14 +250,31 @@ export default function DemoPage() {
           100% { background-position: 200% center; }
         }
 
-        .fade-up { animation: fadeUp 0.5s ease both; }
-        .fade-up-1 { animation: fadeUp 0.5s 0.1s ease both; }
-        .fade-up-2 { animation: fadeUp 0.5s 0.2s ease both; }
-        .fade-up-3 { animation: fadeUp 0.5s 0.3s ease both; }
-        .fade-up-4 { animation: fadeUp 0.5s 0.4s ease both; }
+        @keyframes pulseIndigo {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.2); }
+          50% { box-shadow: 0 0 24px 6px rgba(99,102,241,0.12); }
+        }
 
-        /* Grain overlay */
-        .grain::after {
+        @keyframes meshFloat {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          25% { transform: translate(10px, -20px) scale(1.02); }
+          50% { transform: translate(-5px, 10px) scale(0.98); }
+          75% { transform: translate(15px, 5px) scale(1.01); }
+        }
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .demo-fade-up { animation: fadeUp 0.5s ease both; }
+        .demo-fade-up-1 { animation: fadeUp 0.5s 0.08s ease both; }
+        .demo-fade-up-2 { animation: fadeUp 0.5s 0.16s ease both; }
+        .demo-fade-up-3 { animation: fadeUp 0.5s 0.24s ease both; }
+        .demo-fade-up-4 { animation: fadeUp 0.5s 0.32s ease both; }
+
+        /* Grain overlay - light variant */
+        .demo-grain::after {
           content: '';
           position: fixed;
           inset: -50%;
@@ -323,170 +282,166 @@ export default function DemoPage() {
           height: 200%;
           pointer-events: none;
           z-index: 999;
-          opacity: 0.035;
+          opacity: 0.018;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
           background-size: 200px 200px;
-          animation: grain 8s steps(10) infinite;
-        }
-
-        /* Draftly panel scanline */
-        .scanline-panel {
-          position: relative;
-          overflow: hidden;
-        }
-        .scanline-panel::before {
-          content: '';
-          position: absolute;
-          left: 0; right: 0;
-          height: 40px;
-          background: linear-gradient(to bottom, transparent, rgba(232,197,71,0.04), transparent);
-          animation: scanline 4s linear infinite;
-          pointer-events: none;
-          z-index: 10;
-        }
-
-        /* Tab underline */
-        .tab-active {
-          position: relative;
-          color: var(--bone);
-        }
-        .tab-active::after {
-          content: '';
-          position: absolute;
-          bottom: -2px; left: 0; right: 0;
-          height: 1px;
-          background: var(--amber);
         }
 
         /* Output scroll */
-        .output-scroll {
+        .demo-output-scroll {
           scrollbar-width: thin;
-          scrollbar-color: var(--bone-faint) transparent;
+          scrollbar-color: #CBD5E1 transparent;
         }
-        .output-scroll::-webkit-scrollbar { width: 3px; }
-        .output-scroll::-webkit-scrollbar-track { background: transparent; }
-        .output-scroll::-webkit-scrollbar-thumb { background: var(--bone-faint); border-radius: 2px; }
+        .demo-output-scroll::-webkit-scrollbar { width: 3px; }
+        .demo-output-scroll::-webkit-scrollbar-track { background: transparent; }
+        .demo-output-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 2px; }
 
         /* Feature card hover */
-        .feature-card {
-          transition: border-color 0.2s, transform 0.2s;
+        .demo-feature-card {
+          transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
         }
-        .feature-card:hover {
-          border-color: var(--border-strong) !important;
-          transform: translateY(-2px);
+        .demo-feature-card:hover {
+          border-color: var(--vellum-border) !important;
+          transform: translateY(-3px);
+          box-shadow: 0 12px 40px rgba(11,15,26,0.08);
         }
 
         /* RFP chip */
-        .rfp-chip {
+        .demo-rfp-chip {
           transition: all 0.15s;
           cursor: pointer;
         }
-        .rfp-chip:hover {
-          border-color: rgba(232,197,71,0.4) !important;
-          color: var(--amber) !important;
+        .demo-rfp-chip:hover {
+          border-color: var(--indigo) !important;
+          color: var(--indigo) !important;
+          background: var(--indigo-light) !important;
         }
-        .rfp-chip.active {
-          border-color: var(--amber) !important;
-          color: var(--amber);
-          background: var(--amber-glow);
+        .demo-rfp-chip.active {
+          border-color: var(--indigo) !important;
+          color: var(--indigo);
+          background: var(--indigo-light);
         }
 
         /* Run button shimmer */
-        .btn-run {
-          background: var(--amber);
-          color: var(--ink);
+        .demo-btn-run {
+          background: linear-gradient(135deg, var(--indigo), var(--indigo-hover));
+          color: #fff;
           position: relative;
           overflow: hidden;
           transition: transform 0.15s, box-shadow 0.15s;
         }
-        .btn-run:hover:not(:disabled) {
+        .demo-btn-run:hover:not(:disabled) {
           transform: translateY(-1px);
-          box-shadow: 0 8px 32px rgba(232,197,71,0.3);
+          box-shadow: 0 8px 32px rgba(99,102,241,0.3);
         }
-        .btn-run:active:not(:disabled) {
+        .demo-btn-run:active:not(:disabled) {
           transform: translateY(0);
         }
-        .btn-run::before {
+        .demo-btn-run::before {
           content: '';
           position: absolute;
           inset: 0;
-          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%);
+          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%);
           background-size: 200% auto;
           animation: shimmer 3s linear infinite;
         }
-        .btn-run:disabled {
-          background: var(--ink-3);
-          color: var(--bone-faint);
+        .demo-btn-run:disabled {
+          background: #E2E8F0;
+          color: #94A3B8;
           cursor: not-allowed;
         }
 
         /* Stop button */
-        .btn-stop {
+        .demo-btn-stop {
           background: transparent;
-          border: 1px solid var(--red-dim);
-          color: var(--red-dim);
+          border: 1px solid var(--coral);
+          color: var(--coral);
           transition: background 0.15s;
         }
-        .btn-stop:hover {
-          background: var(--red-faint);
+        .demo-btn-stop:hover {
+          background: var(--coral-light);
         }
 
         /* Intel badge */
-        .intel-badge {
+        .demo-intel-badge {
           display: inline-flex;
           align-items: center;
           gap: 6px;
           font-size: 11px;
           font-family: 'JetBrains Mono', monospace;
-          background: var(--amber-dim);
-          border: 1px solid rgba(232,197,71,0.25);
-          color: var(--amber);
-          padding: 3px 8px;
-          border-radius: 2px;
+          background: var(--indigo-light);
+          border: 1px solid rgba(99,102,241,0.2);
+          color: var(--indigo);
+          padding: 4px 10px;
+          border-radius: 20px;
+        }
+
+        /* Done glow */
+        .demo-done-glow {
+          animation: pulseIndigo 2s ease-in-out 3;
+        }
+
+        /* Tab underline */
+        .demo-tab-active {
+          position: relative;
+          color: var(--indigo) !important;
+        }
+        .demo-tab-active::after {
+          content: '';
+          position: absolute;
+          bottom: -2px; left: 0; right: 0;
+          height: 2px;
+          background: var(--indigo);
+          border-radius: 1px;
         }
 
         /* Architecture node */
-        .arch-node {
-          padding: 10px 16px;
-          border: 1px solid var(--border);
-          border-radius: 4px;
+        .demo-arch-node {
+          padding: 12px 18px;
+          border: 1px solid var(--vellum-border);
+          border-radius: 8px;
           font-size: 12px;
           font-family: 'JetBrains Mono', monospace;
-          color: var(--bone-dim);
-          background: var(--ink-1);
-          transition: border-color 0.15s, color 0.15s;
+          color: var(--ink-secondary);
+          background: var(--card-bg);
+          transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
         }
-        .arch-node:hover {
-          border-color: var(--amber);
-          color: var(--bone);
+        .demo-arch-node:hover {
+          border-color: var(--indigo);
+          color: var(--ink-primary);
+          box-shadow: 0 4px 16px rgba(99,102,241,0.08);
         }
 
-        /* Done glow on Draftly panel */
-        .done-glow {
-          animation: pulseAmber 2s ease-in-out 3;
+        .demo-mesh-bg {
+          background:
+            radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.06) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 20%, rgba(249,112,102,0.04) 0%, transparent 50%),
+            radial-gradient(ellipse at 50% 80%, rgba(16,185,129,0.04) 0%, transparent 50%),
+            var(--vellum);
         }
       `}</style>
 
-      <div className="grain min-h-screen flex flex-col" style={{ background: "var(--ink)" }}>
+      <div className="demo-grain demo-mesh-bg" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <header className="fade-up" style={{
-          borderBottom: "1px solid var(--border)",
-          padding: "16px 32px",
+        <header className="demo-fade-up" style={{
+          borderBottom: "1px solid var(--vellum-border)",
+          padding: "14px 32px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           position: "sticky",
           top: 0,
           zIndex: 50,
-          background: "rgba(10,10,15,0.92)",
-          backdropFilter: "blur(12px)",
+          background: "rgba(247,245,239,0.85)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
         }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "16px" }}>
-            <span className="serif" style={{ fontSize: "22px", letterSpacing: "-0.5px", color: "var(--bone)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "14px" }}>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "22px", fontWeight: 700, letterSpacing: "-0.5px", color: "var(--ink-primary)" }}>
               Draftly
             </span>
-            <span className="mono" style={{ fontSize: "11px", color: "var(--bone-faint)", letterSpacing: "0.08em" }}>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)", letterSpacing: "0.12em", textTransform: "uppercase" as const }}>
               LIVE DEMO
             </span>
           </div>
@@ -497,17 +452,17 @@ export default function DemoPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={activeTab === tab ? "tab-active" : ""}
+                className={activeTab === tab ? "demo-tab-active" : ""}
                 style={{
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  fontFamily: "'Instrument Sans', sans-serif",
+                  fontFamily: "'Outfit', sans-serif",
                   fontSize: "13px",
                   fontWeight: 500,
-                  color: activeTab === tab ? "var(--bone)" : "var(--bone-faint)",
+                  color: activeTab === tab ? "var(--indigo)" : "var(--ink-muted)",
                   letterSpacing: "0.04em",
-                  textTransform: "uppercase",
+                  textTransform: "uppercase" as const,
                   padding: "4px 0",
                   transition: "color 0.15s",
                 }}
@@ -518,8 +473,8 @@ export default function DemoPage() {
           </nav>
 
           {/* LionTown badge */}
-          <div className="intel-badge">
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--amber)", display: "inline-block" }} />
+          <div className="demo-intel-badge">
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--indigo)", display: "inline-block" }} />
             LionTown Marketing · 847 proposals
           </div>
         </header>
@@ -529,10 +484,10 @@ export default function DemoPage() {
           <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 32px", gap: "20px" }}>
 
             {/* RFP selector + edit */}
-            <div className="fade-up-1" style={{ display: "flex", alignItems: "flex-start", gap: "24px", flexWrap: "wrap" }}>
+            <div className="demo-fade-up-1" style={{ display: "flex", alignItems: "flex-start", gap: "24px", flexWrap: "wrap" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                  <span className="mono" style={{ fontSize: "10px", letterSpacing: "0.12em", color: "var(--bone-faint)", textTransform: "uppercase" }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "var(--ink-muted)", textTransform: "uppercase" as const }}>
                     Select RFP Brief
                   </span>
                 </div>
@@ -540,38 +495,38 @@ export default function DemoPage() {
                   {SAMPLE_RFPS.map((r, i) => (
                     <button
                       key={i}
-                      className={`rfp-chip ${selectedRfp === i && !isEditingRfp ? "active" : ""}`}
+                      className={`demo-rfp-chip ${selectedRfp === i && !isEditingRfp ? "active" : ""}`}
                       onClick={() => { setSelectedRfp(i); setIsEditingRfp(false); setCustomRfp(""); }}
                       style={{
-                        fontFamily: "'Instrument Sans', sans-serif",
+                        fontFamily: "'Outfit', sans-serif",
                         fontSize: "12px",
                         fontWeight: 500,
-                        background: "var(--ink-1)",
-                        border: "1px solid var(--border)",
-                        color: "var(--bone-dim)",
-                        padding: "6px 14px",
-                        borderRadius: "2px",
+                        background: "var(--card-bg)",
+                        border: "1px solid var(--vellum-border)",
+                        color: "var(--ink-secondary)",
+                        padding: "7px 16px",
+                        borderRadius: "20px",
                         display: "flex",
                         alignItems: "center",
                         gap: "6px",
                       }}
                     >
-                      <span style={{ opacity: 0.6 }}>{r.icon}</span>
+                      <span style={{ opacity: 0.5 }}>{r.icon}</span>
                       {r.label}
                     </button>
                   ))}
                   <button
-                    className={`rfp-chip ${isEditingRfp ? "active" : ""}`}
+                    className={`demo-rfp-chip ${isEditingRfp ? "active" : ""}`}
                     onClick={() => setIsEditingRfp(!isEditingRfp)}
                     style={{
-                      fontFamily: "'Instrument Sans', sans-serif",
+                      fontFamily: "'Outfit', sans-serif",
                       fontSize: "12px",
                       fontWeight: 500,
-                      background: "var(--ink-1)",
-                      border: "1px solid var(--border)",
-                      color: "var(--bone-dim)",
-                      padding: "6px 14px",
-                      borderRadius: "2px",
+                      background: "var(--card-bg)",
+                      border: "1px solid var(--vellum-border)",
+                      color: "var(--ink-secondary)",
+                      padding: "7px 16px",
+                      borderRadius: "20px",
                     }}
                   >
                     ✎ Custom
@@ -582,8 +537,8 @@ export default function DemoPage() {
 
             {/* Custom RFP textarea */}
             {isEditingRfp && (
-              <div className="fade-up" style={{ background: "var(--ink-1)", border: "1px solid var(--border-strong)", borderRadius: "4px", padding: "16px" }}>
-                <label className="mono" style={{ display: "block", fontSize: "10px", letterSpacing: "0.1em", color: "var(--bone-faint)", marginBottom: "8px", textTransform: "uppercase" }}>
+              <div className="demo-fade-up" style={{ background: "var(--card-bg)", border: "1px solid var(--vellum-border)", borderRadius: "12px", padding: "18px", boxShadow: "var(--card-shadow)" }}>
+                <label style={{ display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "var(--ink-muted)", marginBottom: "8px", textTransform: "uppercase" as const }}>
                   Custom RFP / Brief
                 </label>
                 <textarea
@@ -596,7 +551,7 @@ export default function DemoPage() {
                     background: "transparent",
                     border: "none",
                     outline: "none",
-                    color: "var(--bone)",
+                    color: "var(--ink-primary)",
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: "12px",
                     lineHeight: 1.7,
@@ -609,60 +564,62 @@ export default function DemoPage() {
             {/* RFP preview (collapsed) */}
             {!isEditingRfp && (
               <div style={{
-                background: "var(--ink-1)",
-                border: "1px solid var(--border)",
-                borderRadius: "4px",
+                background: "var(--card-bg)",
+                border: "1px solid var(--vellum-border)",
+                borderRadius: "12px",
                 padding: "14px 18px",
-                borderLeft: "2px solid var(--bone-faint)",
+                borderLeft: "3px solid var(--indigo)",
+                boxShadow: "var(--card-shadow)",
               }}>
-                <p className="mono" style={{ fontSize: "11px", color: "var(--bone-dim)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--ink-secondary)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
                   {rfpText.slice(0, 200)}{rfpText.length > 200 ? "…" : ""}
                 </p>
               </div>
             )}
 
             {/* Split output panels */}
-            <div className="fade-up-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", flex: 1, minHeight: "340px" }}>
+            <div className="demo-fade-up-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", flex: 1, minHeight: "340px" }}>
 
               {/* Generic GPT panel */}
               <div style={{
                 display: "flex",
                 flexDirection: "column",
-                background: "var(--ink-1)",
-                border: "1px solid rgba(196,77,77,0.25)",
-                borderRadius: "6px",
+                background: "var(--card-bg)",
+                border: "1px solid rgba(249,112,102,0.3)",
+                borderRadius: "12px",
                 overflow: "hidden",
+                boxShadow: "var(--card-shadow)",
               }}>
                 <div style={{
                   padding: "14px 18px",
-                  borderBottom: "1px solid rgba(196,77,77,0.15)",
-                  background: "rgba(196,77,77,0.06)",
+                  borderBottom: "1px solid rgba(249,112,102,0.15)",
+                  background: "rgba(249,112,102,0.04)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                 }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span className="serif" style={{ fontSize: "15px", color: "#E87171" }}>Generic GPT-4o</span>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "15px", fontWeight: 600, color: "var(--coral)" }}>Generic GPT-4o</span>
                       {running && (
-                        <span className="mono" style={{ fontSize: "10px", color: "#E87171", opacity: 0.7 }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--coral)", opacity: 0.7 }}>
                           ● streaming
                         </span>
                       )}
                     </div>
-                    <p className="mono" style={{ fontSize: "10px", color: "var(--bone-faint)", marginTop: "3px" }}>
+                    <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)", marginTop: "3px" }}>
                       No firm context · generic output
                     </p>
                   </div>
                   {genericWordCount > 0 && (
-                    <span className="mono" style={{ fontSize: "10px", color: "var(--bone-faint)" }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)" }}>
                       {genericWordCount}w
                     </span>
                   )}
                 </div>
                 <div
                   ref={genericRef}
-                  className="output-scroll"
+                  className="demo-output-scroll"
                   style={{
                     flex: 1,
                     padding: "18px",
@@ -670,7 +627,7 @@ export default function DemoPage() {
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: "11.5px",
                     lineHeight: 1.8,
-                    color: "rgba(240,237,230,0.5)",
+                    color: "var(--ink-muted)",
                   }}
                 >
                   {genericStream ? (
@@ -680,7 +637,7 @@ export default function DemoPage() {
                     </span>
                   ) : (
                     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <p className="mono" style={{ fontSize: "11px", color: "var(--bone-faint)", textAlign: "center", lineHeight: 1.8 }}>
+                      <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--ink-muted)", textAlign: "center", lineHeight: 1.8 }}>
                         Generic output will appear here.<br />
                         <span style={{ opacity: 0.5 }}>Same RFP. No memory. No context.</span>
                       </p>
@@ -691,47 +648,48 @@ export default function DemoPage() {
 
               {/* Draftly panel */}
               <div
-                className={`scanline-panel ${done ? "done-glow" : ""}`}
+                className={done ? "demo-done-glow" : ""}
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  background: "var(--ink-1)",
-                  border: done ? "1px solid rgba(232,197,71,0.5)" : "1px solid rgba(232,197,71,0.2)",
-                  borderRadius: "6px",
+                  background: "var(--card-bg)",
+                  border: done ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(99,102,241,0.25)",
+                  borderRadius: "12px",
                   overflow: "hidden",
                   transition: "border-color 0.4s",
+                  boxShadow: "var(--card-shadow)",
                 }}
               >
                 <div style={{
                   padding: "14px 18px",
-                  borderBottom: "1px solid rgba(232,197,71,0.12)",
-                  background: "rgba(232,197,71,0.05)",
+                  borderBottom: "1px solid rgba(99,102,241,0.12)",
+                  background: "rgba(99,102,241,0.03)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                 }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span className="serif" style={{ fontSize: "15px", color: "var(--amber)" }}>Draftly + Context-Mapper</span>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "15px", fontWeight: 600, color: "var(--indigo)" }}>Draftly + Context-Mapper</span>
                       {running && (
-                        <span className="mono" style={{ fontSize: "10px", color: "var(--amber)", opacity: 0.7 }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--indigo)", opacity: 0.7 }}>
                           ● streaming
                         </span>
                       )}
                     </div>
-                    <p className="mono" style={{ fontSize: "10px", color: "var(--bone-faint)", marginTop: "3px" }}>
+                    <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)", marginTop: "3px" }}>
                       LionTown · 847 proposals · $4,500 anchor · 73% win rate
                     </p>
                   </div>
                   {draftlyWordCount > 0 && (
-                    <span className="mono" style={{ fontSize: "10px", color: "var(--amber)", opacity: 0.7 }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--indigo)", opacity: 0.7 }}>
                       {draftlyWordCount}w
                     </span>
                   )}
                 </div>
                 <div
                   ref={draftlyRef}
-                  className="output-scroll"
+                  className="demo-output-scroll"
                   style={{
                     flex: 1,
                     padding: "18px",
@@ -739,16 +697,16 @@ export default function DemoPage() {
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: "11.5px",
                     lineHeight: 1.8,
-                    color: "var(--bone)",
+                    color: "var(--ink-primary)",
                   }}
                 >
                   {draftlyStream ? (
                     <HighlightedOutput text={draftlyStream} isTyping={running} />
                   ) : (
                     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <p className="mono" style={{ fontSize: "11px", color: "var(--bone-faint)", textAlign: "center", lineHeight: 1.8 }}>
+                      <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--ink-muted)", textAlign: "center", lineHeight: 1.8 }}>
                         Context-aware output will appear here.<br />
-                        <span style={{ opacity: 0.5, color: "var(--amber)" }}>847 proposals of institutional memory.</span>
+                        <span style={{ opacity: 0.7, color: "var(--indigo)" }}>847 proposals of institutional memory.</span>
                       </p>
                     </div>
                   )}
@@ -757,18 +715,18 @@ export default function DemoPage() {
             </div>
 
             {/* Bottom bar: run button + quote */}
-            <div className="fade-up-3" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div className="demo-fade-up-3" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div style={{ display: "flex", gap: "10px" }}>
                 <button
-                  className="btn-run"
+                  className="demo-btn-run"
                   onClick={runDemo}
                   disabled={!rfpText.trim()}
                   style={{
                     flex: 1,
                     padding: "15px 24px",
                     border: "none",
-                    borderRadius: "4px",
-                    fontFamily: "'Instrument Sans', sans-serif",
+                    borderRadius: "10px",
+                    fontFamily: "'Outfit', sans-serif",
                     fontSize: "14px",
                     fontWeight: 600,
                     letterSpacing: "0.02em",
@@ -779,13 +737,12 @@ export default function DemoPage() {
                 </button>
                 {running && (
                   <button
-                    className="btn-stop"
+                    className="demo-btn-stop"
                     onClick={runDemo}
                     style={{
                       padding: "15px 20px",
-                      border: "none",
-                      borderRadius: "4px",
-                      fontFamily: "'Instrument Sans', sans-serif",
+                      borderRadius: "10px",
+                      fontFamily: "'Outfit', sans-serif",
                       fontSize: "13px",
                       fontWeight: 500,
                       cursor: "pointer",
@@ -795,8 +752,8 @@ export default function DemoPage() {
                   </button>
                 )}
               </div>
-              <p className="mono" style={{ textAlign: "center", fontSize: "10.5px", color: "var(--bone-faint)", lineHeight: 1.7 }}>
-                "OpenAI will never fine-tune on LionTown's 847 proposals, $4,500 retainer anchor, or 73% Brightfield win rate. Draftly will."
+              <p style={{ fontFamily: "'JetBrains Mono', monospace", textAlign: "center", fontSize: "10.5px", color: "var(--ink-muted)", lineHeight: 1.7 }}>
+                &ldquo;OpenAI will never fine-tune on LionTown&apos;s 847 proposals, $4,500 retainer anchor, or 73% Brightfield win rate. Draftly will.&rdquo;
               </p>
             </div>
           </div>
@@ -806,56 +763,58 @@ export default function DemoPage() {
         {activeTab === "features" && (
           <div style={{ flex: 1, padding: "48px 32px", maxWidth: "960px", margin: "0 auto", width: "100%" }}>
 
-            <div className="fade-up" style={{ marginBottom: "48px" }}>
-              <h1 className="serif" style={{ fontSize: "42px", lineHeight: 1.1, letterSpacing: "-1px", marginBottom: "12px" }}>
+            <div className="demo-fade-up" style={{ marginBottom: "48px" }}>
+              <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "42px", fontWeight: 700, lineHeight: 1.1, letterSpacing: "-1px", marginBottom: "12px", color: "var(--ink-primary)" }}>
                 What makes Draftly<br />
-                <em style={{ color: "var(--amber)" }}>impossible to replicate.</em>
+                <em style={{ color: "var(--indigo)", fontStyle: "italic" }}>impossible to replicate.</em>
               </h1>
-              <p style={{ color: "var(--bone-dim)", fontSize: "15px", lineHeight: 1.7, maxWidth: "540px" }}>
+              <p style={{ color: "var(--ink-secondary)", fontSize: "15px", lineHeight: 1.7, maxWidth: "540px" }}>
                 Every proposal your firm has ever written becomes a competitive advantage. The moat grows with every deal — won or lost.
               </p>
             </div>
 
-            <div className="fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "48px" }}>
+            <div className="demo-fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "48px" }}>
               {FEATURES.map((f, i) => (
                 <div
                   key={f.id}
-                  className="feature-card"
+                  className="demo-feature-card"
                   style={{
                     padding: "28px",
-                    background: "var(--ink-1)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "6px",
+                    background: "var(--card-bg)",
+                    border: "1px solid var(--vellum-border)",
+                    borderRadius: "12px",
                     animationDelay: `${i * 0.08}s`,
+                    boxShadow: "var(--card-shadow)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
                     <div>
-                      <h3 className="serif" style={{ fontSize: "20px", marginBottom: "4px" }}>{f.label}</h3>
-                      <span className="mono" style={{ fontSize: "10px", color: f.color === "amber" ? "var(--amber)" : "var(--jade)", letterSpacing: "0.08em" }}>
+                      <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "20px", fontWeight: 600, marginBottom: "4px", color: "var(--ink-primary)" }}>{f.label}</h3>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: f.color === "indigo" ? "var(--indigo)" : "var(--jade)", letterSpacing: "0.08em" }}>
                         {f.sublabel}
                       </span>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div className="mono" style={{
+                      <div style={{
+                        fontFamily: "'JetBrains Mono', monospace",
                         fontSize: "24px",
                         fontWeight: 500,
-                        color: f.color === "amber" ? "var(--amber)" : "var(--jade)",
+                        color: f.color === "indigo" ? "var(--indigo)" : "var(--jade)",
                         lineHeight: 1,
                       }}>
                         {f.stat}
                       </div>
-                      <div className="mono" style={{ fontSize: "9px", color: "var(--bone-faint)", marginTop: "2px" }}>{f.statLabel}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "var(--ink-muted)", marginTop: "2px" }}>{f.statLabel}</div>
                     </div>
                   </div>
-                  <p style={{ fontSize: "13px", color: "var(--bone-dim)", lineHeight: 1.7 }}>{f.description}</p>
+                  <p style={{ fontSize: "13px", color: "var(--ink-secondary)", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif" }}>{f.description}</p>
                 </div>
               ))}
             </div>
 
             {/* Tiers */}
-            <div className="fade-up-2">
-              <h2 className="serif" style={{ fontSize: "24px", marginBottom: "20px", letterSpacing: "-0.5px" }}>Pricing</h2>
+            <div className="demo-fade-up-2">
+              <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "24px", fontWeight: 600, marginBottom: "20px", letterSpacing: "-0.5px", color: "var(--ink-primary)" }}>Pricing</h2>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
                 {[
                   { name: "Starter", price: "$99", period: "/mo", features: ["Proposal generation", "DOCX export", "Basic analytics"], highlight: false },
@@ -864,36 +823,38 @@ export default function DemoPage() {
                 ].map((tier) => (
                   <div key={tier.name} style={{
                     padding: "24px",
-                    background: tier.highlight ? "var(--amber-dim)" : "var(--ink-1)",
-                    border: `1px solid ${tier.highlight ? "rgba(232,197,71,0.3)" : "var(--border)"}`,
-                    borderRadius: "6px",
+                    background: tier.highlight ? "var(--indigo-light)" : "var(--card-bg)",
+                    border: `1px solid ${tier.highlight ? "rgba(99,102,241,0.3)" : "var(--vellum-border)"}`,
+                    borderRadius: "12px",
                     position: "relative",
+                    boxShadow: tier.highlight ? "0 4px 20px rgba(99,102,241,0.1)" : "var(--card-shadow)",
                   }}>
                     {tier.highlight && (
-                      <div className="mono" style={{
+                      <div style={{
                         position: "absolute",
                         top: "-10px", left: "50%", transform: "translateX(-50%)",
-                        background: "var(--amber)",
-                        color: "var(--ink)",
+                        background: "linear-gradient(135deg, var(--indigo), var(--indigo-hover))",
+                        color: "#fff",
+                        fontFamily: "'JetBrains Mono', monospace",
                         fontSize: "9px",
                         fontWeight: 600,
-                        padding: "2px 10px",
-                        borderRadius: "2px",
+                        padding: "3px 12px",
+                        borderRadius: "12px",
                         letterSpacing: "0.1em",
-                        textTransform: "uppercase",
+                        textTransform: "uppercase" as const,
                       }}>
                         Core Tier
                       </div>
                     )}
-                    <h3 className="serif" style={{ fontSize: "18px", marginBottom: "8px" }}>{tier.name}</h3>
+                    <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "18px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-primary)" }}>{tier.name}</h3>
                     <div style={{ marginBottom: "16px" }}>
-                      <span className="mono" style={{ fontSize: "28px", color: tier.highlight ? "var(--amber)" : "var(--bone)" }}>{tier.price}</span>
-                      <span className="mono" style={{ fontSize: "12px", color: "var(--bone-faint)" }}>{tier.period}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "28px", color: tier.highlight ? "var(--indigo)" : "var(--ink-primary)" }}>{tier.price}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: "var(--ink-muted)" }}>{tier.period}</span>
                     </div>
-                    <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "6px", padding: 0, margin: 0 }}>
                       {tier.features.map((f) => (
-                        <li key={f} className="mono" style={{ fontSize: "11px", color: "var(--bone-dim)", display: "flex", gap: "8px" }}>
-                          <span style={{ color: tier.highlight ? "var(--amber)" : "var(--jade)" }}>✓</span>
+                        <li key={f} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--ink-secondary)", display: "flex", gap: "8px" }}>
+                          <span style={{ color: tier.highlight ? "var(--indigo)" : "var(--jade)" }}>✓</span>
                           {f}
                         </li>
                       ))}
@@ -909,18 +870,18 @@ export default function DemoPage() {
         {activeTab === "architecture" && (
           <div style={{ flex: 1, padding: "48px 32px", maxWidth: "960px", margin: "0 auto", width: "100%" }}>
 
-            <div className="fade-up" style={{ marginBottom: "48px" }}>
-              <h1 className="serif" style={{ fontSize: "42px", lineHeight: 1.1, letterSpacing: "-1px", marginBottom: "12px" }}>
+            <div className="demo-fade-up" style={{ marginBottom: "48px" }}>
+              <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "42px", fontWeight: 700, lineHeight: 1.1, letterSpacing: "-1px", marginBottom: "12px", color: "var(--ink-primary)" }}>
                 Technical<br />
-                <em style={{ color: "var(--amber)" }}>architecture.</em>
+                <em style={{ color: "var(--indigo)", fontStyle: "italic" }}>architecture.</em>
               </h1>
-              <p style={{ color: "var(--bone-dim)", fontSize: "15px", lineHeight: 1.7, maxWidth: "560px" }}>
-                No third-party vector DBs. No Supabase. No Python. Swift Vapor + SQLite — fast, auditable, customer-isolated.
+              <p style={{ color: "var(--ink-secondary)", fontSize: "15px", lineHeight: 1.7, maxWidth: "560px" }}>
+                No third-party DBs. Swift Vapor + SQLite — fast, auditable, customer-isolated.
               </p>
             </div>
 
             {/* Stack diagram */}
-            <div className="fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "40px" }}>
+            <div className="demo-fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "40px" }}>
               {[
                 { layer: "Frontend", tech: "Next.js 14", note: "Tailwind CSS + shadcn/ui" },
                 { layer: "Backend", tech: "Swift Vapor 4", note: "SQLite via Fluent ORM" },
@@ -932,19 +893,19 @@ export default function DemoPage() {
                 { layer: "Payments", tech: "Stripe", note: "Checkout Sessions" },
                 { layer: "CRM", tech: "HubSpot + Pipedrive", note: "OAuth + API key" },
               ].map((item) => (
-                <div key={item.layer} className="arch-node">
-                  <div className="mono" style={{ fontSize: "9px", letterSpacing: "0.1em", color: "var(--amber)", textTransform: "uppercase", marginBottom: "4px" }}>
+                <div key={item.layer} className="demo-arch-node">
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "var(--indigo)", textTransform: "uppercase" as const, marginBottom: "4px" }}>
                     {item.layer}
                   </div>
-                  <div style={{ fontSize: "13px", color: "var(--bone)", marginBottom: "2px" }}>{item.tech}</div>
-                  <div className="mono" style={{ fontSize: "10px", color: "var(--bone-faint)" }}>{item.note}</div>
+                  <div style={{ fontSize: "13px", color: "var(--ink-primary)", marginBottom: "2px", fontFamily: "'Outfit', sans-serif", fontWeight: 500 }}>{item.tech}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)" }}>{item.note}</div>
                 </div>
               ))}
             </div>
 
             {/* Architecture rules */}
-            <div className="fade-up-2" style={{ marginBottom: "40px" }}>
-              <h2 className="serif" style={{ fontSize: "22px", marginBottom: "16px", letterSpacing: "-0.5px" }}>
+            <div className="demo-fade-up-2" style={{ marginBottom: "40px" }}>
+              <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "22px", fontWeight: 600, marginBottom: "16px", letterSpacing: "-0.5px", color: "var(--ink-primary)" }}>
                 Invariants — never broken
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -960,26 +921,28 @@ export default function DemoPage() {
                     gridTemplateColumns: "220px 1fr",
                     gap: "16px",
                     padding: "14px 18px",
-                    background: "var(--ink-1)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "4px",
-                    borderLeft: "2px solid var(--amber)",
+                    background: "var(--card-bg)",
+                    border: "1px solid var(--vellum-border)",
+                    borderRadius: "8px",
+                    borderLeft: "3px solid var(--indigo)",
+                    boxShadow: "var(--card-shadow)",
                   }}>
-                    <span className="mono" style={{ fontSize: "11px", color: "var(--amber)" }}>{rule}</span>
-                    <span style={{ fontSize: "12px", color: "var(--bone-dim)", lineHeight: 1.6 }}>{desc}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--indigo)", fontWeight: 500 }}>{rule}</span>
+                    <span style={{ fontSize: "12px", color: "var(--ink-secondary)", lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>{desc}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Endpoints */}
-            <div className="fade-up-3">
-              <h2 className="serif" style={{ fontSize: "22px", marginBottom: "16px", letterSpacing: "-0.5px" }}>Key endpoints</h2>
+            <div className="demo-fade-up-3">
+              <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "22px", fontWeight: 600, marginBottom: "16px", letterSpacing: "-0.5px", color: "var(--ink-primary)" }}>Key endpoints</h2>
               <div style={{
-                background: "var(--ink-1)",
-                border: "1px solid var(--border)",
-                borderRadius: "6px",
+                background: "var(--card-bg)",
+                border: "1px solid var(--vellum-border)",
+                borderRadius: "12px",
                 overflow: "hidden",
+                boxShadow: "var(--card-shadow)",
               }}>
                 {[
                   ["POST", "/auth/register", "Create customer + JWT"],
@@ -995,20 +958,21 @@ export default function DemoPage() {
                     display: "grid",
                     gridTemplateColumns: "56px 260px 1fr",
                     gap: "16px",
-                    padding: "11px 18px",
-                    borderBottom: i < 7 ? "1px solid var(--border)" : "none",
+                    padding: "12px 18px",
+                    borderBottom: i < 7 ? "1px solid var(--vellum-border)" : "none",
                     alignItems: "center",
                   }}>
-                    <span className="mono" style={{
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace",
                       fontSize: "10px",
                       fontWeight: 500,
-                      color: method === "GET" ? "var(--jade)" : "var(--amber)",
+                      color: method === "GET" ? "var(--jade)" : "var(--indigo)",
                       letterSpacing: "0.06em",
                     }}>
                       {method}
                     </span>
-                    <span className="mono" style={{ fontSize: "11px", color: "var(--bone)" }}>{path}</span>
-                    <span style={{ fontSize: "12px", color: "var(--bone-faint)" }}>{note}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--ink-primary)" }}>{path}</span>
+                    <span style={{ fontSize: "12px", color: "var(--ink-muted)", fontFamily: "'DM Sans', sans-serif" }}>{note}</span>
                   </div>
                 ))}
               </div>
@@ -1018,25 +982,25 @@ export default function DemoPage() {
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <footer style={{
-          borderTop: "1px solid var(--border)",
+          borderTop: "1px solid var(--vellum-border)",
           padding: "16px 32px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}>
-          <span className="mono" style={{ fontSize: "10px", color: "var(--bone-faint)" }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)" }}>
             Draftly © 2026 · Demo Mode
           </span>
           <div style={{ display: "flex", gap: "20px" }}>
-            <a href="/login" className="mono" style={{ fontSize: "10px", color: "var(--bone-faint)", textDecoration: "none", transition: "color 0.15s" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--amber)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "var(--bone-faint)")}
+            <a href="/login" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)", textDecoration: "none", transition: "color 0.15s" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--indigo)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--ink-muted)")}
             >
               Sign in →
             </a>
-            <a href="/dashboard" className="mono" style={{ fontSize: "10px", color: "var(--bone-faint)", textDecoration: "none", transition: "color 0.15s" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--amber)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "var(--bone-faint)")}
+            <a href="/dashboard" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)", textDecoration: "none", transition: "color 0.15s" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--indigo)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--ink-muted)")}
             >
               Dashboard →
             </a>
