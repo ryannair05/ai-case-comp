@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: ["localhost:3000"],
   // API proxy to Railway backend (avoids CORS in dev)
   async rewrites() {
     return [

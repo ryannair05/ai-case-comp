@@ -106,7 +106,7 @@ export default function MoatMeterPage() {
   useEffect(() => {
     Promise.all([
       contextMapperApi.status().then((d) => setData(d as CMStatus)),
-      analyticsApi.industryBenchmark().then((d) => setBenchmark(d as IndustryBenchmark)).catch(() => {}),
+      analyticsApi.industryBenchmark().then((d) => setBenchmark(d as IndustryBenchmark)).catch(() => { }),
     ])
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -195,12 +195,10 @@ export default function MoatMeterPage() {
               return (
                 <div key={m.label} className="flex items-center gap-3">
                   <div
-                    className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                      isCurrent ? "ring-2 ring-offset-2 ring-offset-gray-900" : ""
-                    }`}
+                    className={`w-3 h-3 rounded-full flex-shrink-0 ${isCurrent ? "ring-2 ring-offset-2 ring-offset-gray-900" : ""
+                      }`}
                     style={{
                       background: isReached ? "#6366F1" : "#374151",
-                      ringColor: isReached ? "#6366F1" : undefined,
                     }}
                   />
                   <div className="flex-1 flex items-center justify-between">

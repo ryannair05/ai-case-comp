@@ -883,7 +883,7 @@ export default function DemoPage() {
             {/* Stack diagram */}
             <div className="demo-fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "40px" }}>
               {[
-                { layer: "Frontend", tech: "Next.js 14", note: "Tailwind CSS + shadcn/ui" },
+                { layer: "Frontend", tech: "Next.js 16", note: "Tailwind CSS 4 + Headless UI" },
                 { layer: "Backend", tech: "Swift Vapor 4", note: "SQLite via Fluent ORM" },
                 { layer: "Vectors", tech: "SIMD BLOB store", note: "1024-dim · cosine similarity" },
                 { layer: "Generation", tech: "Claude Sonnet 4.6", note: "Anthropic — never swapped" },

@@ -11,8 +11,8 @@ export async function POST(req: NextRequest) {
   const { rfp_text } = await req.json();
 
   const stream = await client.chat.completions.create({
-    model: "gpt-4o",
-    max_tokens: 1500,
+    model: "gpt-5-nano",
+    max_completion_tokens: 1500,
     stream: true,
     messages: [
       {
