@@ -14,8 +14,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
     ],
     targets: [
-        // Library target — all app logic; testable
-        .target(
+        .executableTarget(
             name: "App",
             dependencies: [
                 .product(name: "Fluent",              package: "fluent"),
@@ -28,22 +27,12 @@ let package = Package(
             path: "Sources/App",
             swiftSettings: swiftSettings
         ),
-        // Thin executable — just boots the Vapor app
-        .executableTarget(
-            name: "Run",
-            dependencies: [
-                .target(name: "App"),
-                .product(name: "Vapor", package: "vapor"),
-            ],
-            path: "Sources/Run",
-            swiftSettings: swiftSettings
-        ),
-        // Test target — imports App library
         .testTarget(
             name: "AppTests",
             dependencies: [
                 .target(name: "App"),
                 .product(name: "VaporTesting", package: "vapor"),
+                .product(name: "FluentSQLiteDriver",  package: "fluent-sqlite-driver"),
             ],
             path: "Tests/AppTests",
             swiftSettings: swiftSettings

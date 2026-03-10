@@ -1,14 +1,17 @@
-import Vapor
 import Fluent
 import FluentSQLiteDriver
 import JWT
+import Vapor
 
-public func configure(_ app: Application) async throws {
+func configure(_ app: Application) async throws {
     // MARK: - Database (SQLite via Fluent — replaces Supabase)
-    app.databases.use(
-        .sqlite(.file(Environment.get("SQLITE_PATH") ?? "db.sqlite")),
-        as: .sqlite
-    )
+    // In testing, the test helper pre-registers .sqlite(.memory) before calling configure.
+    if app.environment != .testing {
+        app.databases.use(
+            .sqlite(.file(Environment.get("SQLITE_PATH") ?? "db.sqlite")),
+            as: .sqlite
+        )
+    }
 
     // MARK: - Migrations
     app.migrations.add(CreateCustomer())
@@ -19,6 +22,7 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateChurnSignal())
     app.migrations.add(CreateVectorEntry())
     app.migrations.add(CreateJobRecord())
+    app.migrations.add(AddIndices())
     try await app.autoMigrate()
 
     // MARK: - JWT signing key

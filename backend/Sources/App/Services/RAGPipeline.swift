@@ -1,5 +1,5 @@
-import Foundation
 import Fluent
+import Foundation
 
 /// RAG (Retrieval-Augmented Generation) pipeline for Context-Mapper.
 ///
@@ -14,8 +14,8 @@ struct RAGPipeline {
     static let shared = RAGPipeline()
     private init() {}
 
-    private let chunkSize    = 400   // words
-    private let chunkOverlap = 80    // words (prevents cutting mid-sentence)
+    private let chunkSize = 400  // words
+    private let chunkOverlap = 80  // words (prevents cutting mid-sentence)
 
     // MARK: - Chunking
 
@@ -136,7 +136,7 @@ struct RAGPipeline {
         if proposalsIndexed < ColdStart.shared.threshold {
             // Use cold-start templates with the customer's actual industry
             // Default to consulting template when industry is not specified — broadest coverage
-        contextChunks = ColdStart.shared.getContext(industry: industry ?? "consulting")
+            contextChunks = ColdStart.shared.getContext(industry: industry ?? "consulting")
             coldStart = true
         } else {
             contextChunks = try await LocalVectorStore.shared.query(
@@ -166,7 +166,7 @@ struct PricingRow: Codable {
 
     enum CodingKeys: String, CodingKey {
         case serviceType = "service_type"
-        case priceUsd    = "price_usd"
+        case priceUsd = "price_usd"
         case won, notes
     }
 }

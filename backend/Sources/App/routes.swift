@@ -1,6 +1,6 @@
 import Vapor
 
-public func routes(_ app: Application) throws {
+func routes(_ app: Application) throws {
     // Health check
     app.get("health") { _ in ["status": "ok", "service": "draftly-api"] }
     app.get { _ in ["service": "Draftly API", "docs": "/docs"] }
