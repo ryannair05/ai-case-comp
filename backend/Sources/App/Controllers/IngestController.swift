@@ -1,0 +1,258 @@
+import Vapor
+import Fluent
+import Foundation
+
+/// Ingest controller — handles file, CSV, and brand-voice ingestion.
+/// All heavy processing runs in a background Task (never blocks HTTP response).
+struct IngestController {
+
+    // MARK: - Pricing CSV
+
+    struct IngestJobResponse: Content {
+        let jobId: String
+        let rowsQueued: Int?
+        let status: String
+        enum CodingKeys: String, CodingKey {
+            case jobId = "job_id"
+            case rowsQueued = "rows_queued"
+            case status
+        }
+    }
+
+    @Sendable
+    func pricingCsv(_ req: Request) async throws -> IngestJobResponse {
+        let customer = try await req.authenticatedCustomer()
+        guard let file = req.body.data else {
+            throw Abort(.badRequest, reason: "No file body provided")
+        }
+        let csvString = String(buffer: file)
+        let rows = try parseCSV(csvString)
+        guard !rows.isEmpty else {
+            throw Abort(.badRequest, reason: "CSV contains no valid rows")
+        }
+
+        // Persist job record and process in background
+        let job = JobRecord(jobType: "ingest_pricing", customerId: customer.id!.uuidString)
+        try await job.save(on: req.db)
+        let jobId = job.id!.uuidString
+
+        Task.detached { [rows, db = req.db] in
+            do {
+                _ = try await RAGPipeline.shared.ingestPricingRows(
+                    customerId: customer.id!.uuidString,
+                    rows: rows,
+                    db: db
+                )
+                // Save pricing rows to relational table
+                for row in rows {
+                    let pd = PricingData(
+                        customerId: customer.id!,
+                        serviceType: row.serviceType,
+                        priceUsd: row.priceUsd,
+                        won: row.won,
+                        notes: row.notes
+                    )
+                    try await pd.save(on: db)
+                }
+                if let job = try await JobRecord.find(UUID(uuidString: jobId), on: db) {
+                    job.status = "completed"
+                    job.completedAt = Date()
+                    try await job.save(on: db)
+                }
+            } catch {
+                if let job = try? await JobRecord.find(UUID(uuidString: jobId), on: db) {
+                    job.status = "failed"
+                    job.resultJson = "{\"error\": \"\(error)\"}"
+                    try? await job.save(on: db)
+                }
+            }
+        }
+
+        return IngestJobResponse(jobId: jobId, rowsQueued: rows.count, status: "queued")
+    }
+
+    // MARK: - Proposal file (PDF/DOCX)
+
+    @Sendable
+    func proposalFile(_ req: Request) async throws -> IngestJobResponse {
+        let customer = try await req.authenticatedCustomer()
+        // Read multipart fields
+        let body = try req.content.decode(ProposalFileRequest.self)
+        guard let fileData = body.file else {
+            throw Abort(.badRequest, reason: "No file provided")
+        }
+
+        let job = JobRecord(jobType: "ingest_proposal", customerId: customer.id!.uuidString)
+        try await job.save(on: req.db)
+        let jobId = job.id!.uuidString
+        let proposalId = UUID().uuidString
+        let metadata: [String: Any] = [
+            "client_name": body.clientName ?? "",
+            "value_usd":   body.valueUsd ?? 0,
+            "outcome":     body.outcome ?? "pending",
+            "title":       body.filename ?? "Uploaded proposal",
+        ]
+
+        Task.detached { [db = req.db] in
+            do {
+                // Extract text from uploaded bytes (plain text fallback)
+                let text = String(data: fileData, encoding: .utf8)
+                    ?? String(data: fileData, encoding: .isoLatin1)
+                    ?? "[Binary file — text extraction not available]"
+
+                _ = try await RAGPipeline.shared.ingestProposal(
+                    customerId: customer.id!.uuidString,
+                    proposalId: proposalId,
+                    text: text,
+                    metadata: metadata,
+                    db: db
+                )
+                if let job = try await JobRecord.find(UUID(uuidString: jobId), on: db) {
+                    job.status = "completed"
+                    job.completedAt = Date()
+                    try await job.save(on: db)
+                }
+            } catch {
+                if let job = try? await JobRecord.find(UUID(uuidString: jobId), on: db) {
+                    job.status = "failed"
+                    try? await job.save(on: db)
+                }
+            }
+        }
+
+        return IngestJobResponse(jobId: jobId, rowsQueued: nil, status: "queued")
+    }
+
+    // MARK: - Re-index existing proposal
+
+    @Sendable
+    func reindexProposal(_ req: Request) async throws -> IngestJobResponse {
+        let customer = try await req.authenticatedCustomer()
+        let proposalId = try req.parameters.require("id", as: UUID.self)
+        guard let proposal = try await Proposal.query(on: req.db)
+            .filter(\.$customerId == customer.id!)
+            .filter(\.$id == proposalId)
+            .first() else {
+            throw Abort(.notFound, reason: "Proposal not found")
+        }
+
+        let job = JobRecord(jobType: "reindex_proposal", customerId: customer.id!.uuidString)
+        try await job.save(on: req.db)
+        let jobId = job.id!.uuidString
+
+        Task.detached { [content = proposal.content, db = req.db] in
+            _ = try? await RAGPipeline.shared.ingestProposal(
+                customerId: customer.id!.uuidString,
+                proposalId: proposalId.uuidString,
+                text: content,
+                metadata: ["title": proposal.title ?? ""],
+                db: db
+            )
+            if let job = try? await JobRecord.find(UUID(uuidString: jobId), on: db) {
+                job.status = "completed"
+                job.completedAt = Date()
+                try? await job.save(on: db)
+            }
+        }
+
+        return IngestJobResponse(jobId: jobId, rowsQueued: nil, status: "queued")
+    }
+
+    // MARK: - Brand voice
+
+    @Sendable
+    func brandVoice(_ req: Request) async throws -> IngestJobResponse {
+        let customer = try await req.authenticatedCustomer()
+        let body = try req.content.decode(BrandVoiceRequest.self)
+
+        let bv = BrandVoice(
+            customerId: customer.id!,
+            exampleText: body.exampleText,
+            styleNotes: body.styleNotes,
+            toneTags: body.toneTags
+        )
+        try await bv.save(on: req.db)
+
+        let job = JobRecord(jobType: "ingest_brand_voice", customerId: customer.id!.uuidString)
+        try await job.save(on: req.db)
+        let jobId = job.id!.uuidString
+
+        Task.detached { [db = req.db] in
+            _ = try? await RAGPipeline.shared.ingestBrandVoice(
+                customerId: customer.id!.uuidString,
+                brandVoiceId: bv.id?.uuidString ?? UUID().uuidString,
+                text: body.exampleText,
+                metadata: ["style_notes": body.styleNotes ?? ""],
+                db: db
+            )
+            if let job = try? await JobRecord.find(UUID(uuidString: jobId), on: db) {
+                job.status = "completed"
+                try? await job.save(on: db)
+            }
+        }
+
+        return IngestJobResponse(jobId: jobId, rowsQueued: nil, status: "queued")
+    }
+
+    // MARK: - Job status polling
+
+    @Sendable
+    func jobStatus(_ req: Request) async throws -> JobRecord {
+        let customer = try await req.authenticatedCustomer()
+        guard let jobId = UUID(uuidString: try req.parameters.require("jobId")),
+              let job = try await JobRecord.find(jobId, on: req.db),
+              job.customerId == customer.id!.uuidString else {
+            throw Abort(.notFound, reason: "Job not found")
+        }
+        return job
+    }
+
+    // MARK: - Helpers
+
+    private func parseCSV(_ csv: String) throws -> [PricingRow] {
+        let lines = csv.components(separatedBy: "\n").filter { !$0.isEmpty }
+        guard let header = lines.first else { return [] }
+        let keys = header.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        return lines.dropFirst().compactMap { line -> PricingRow? in
+            let vals = line.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            guard vals.count >= 2 else { return nil }
+            func field(_ k: String) -> String? {
+                guard let i = keys.firstIndex(of: k), i < vals.count else { return nil }
+                return vals[i].isEmpty ? nil : vals[i]
+            }
+            guard let svcType = field("service_type"), let priceStr = field("price_usd"),
+                  let price = Double(priceStr) else { return nil }
+            let wonStr = field("won")?.lowercased()
+            let won: Bool? = wonStr.map { ["true", "1", "yes"].contains($0) }
+            return PricingRow(serviceType: svcType, priceUsd: price, won: won, notes: field("notes"))
+        }
+    }
+}
+
+// MARK: - Request DTOs
+
+struct ProposalFileRequest: Content {
+    var file: Data?
+    var filename: String?
+    var clientName: String?
+    var valueUsd: Double?
+    var outcome: String?
+    enum CodingKeys: String, CodingKey {
+        case file, filename
+        case clientName = "client_name"
+        case valueUsd   = "value_usd"
+        case outcome
+    }
+}
+
+struct BrandVoiceRequest: Content {
+    let exampleText: String
+    let styleNotes: String?
+    let toneTags: String?
+    enum CodingKeys: String, CodingKey {
+        case exampleText = "example_text"
+        case styleNotes  = "style_notes"
+        case toneTags    = "tone_tags"
+    }
+}
