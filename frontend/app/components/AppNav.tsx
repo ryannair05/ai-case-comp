@@ -16,6 +16,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/moat-meter", label: "Moat Meter" },
   { href: "/onboarding", label: "Upload" },
   { href: "/billing", label: "Billing" },
+  { href: "/support", label: "Support" },
   { href: "/settings", label: "Settings" },
   { href: "/gtm/meeting-signals", label: "Signals", tier: "gtm_agent" },
   { href: "/gtm/outreach", label: "Outreach", tier: "gtm_agent" },
@@ -28,31 +29,71 @@ export default function AppNav() {
   const isGtm = user?.tier === "gtm_agent";
 
   return (
-    <nav
-      className="bg-white border-b px-6 py-3 flex items-center justify-between"
-      style={{ borderColor: "var(--vellum-border)" }}
-    >
+    <nav style={{
+      background: "rgba(11,15,26,0.85)",
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
+      borderBottom: "1px solid rgba(255,255,255,0.06)",
+      padding: "0 24px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: "56px",
+      position: "sticky",
+      top: 0,
+      zIndex: 50,
+    }}>
       {/* Logo */}
       <Link
         href="/dashboard"
-        className="text-xl font-bold shrink-0"
-        style={{ fontFamily: "Fraunces, Georgia, serif", color: "var(--ink-primary)" }}
+        style={{
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: "20px",
+          fontWeight: 700,
+          color: "#fff",
+          letterSpacing: "-0.5px",
+          textDecoration: "none",
+          flexShrink: 0,
+        }}
       >
         Draftly
       </Link>
 
       {/* Links */}
-      <div className="flex items-center gap-5 text-sm overflow-x-auto">
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+        overflowX: "auto",
+        fontSize: "13px",
+      }}>
         {NAV_LINKS.map((link) => {
           if (link.tier === "gtm_agent" && !isGtm) {
             return (
               <span
                 key={link.href}
-                className="text-slate-400 cursor-not-allowed select-none flex items-center gap-1"
+                style={{
+                  color: "rgba(148,163,184,0.3)",
+                  cursor: "not-allowed",
+                  padding: "6px 10px",
+                  borderRadius: "6px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  whiteSpace: "nowrap",
+                  userSelect: "none",
+                }}
                 title="GTM Agent tier required"
               >
                 {link.label}
-                <span className="text-xs bg-slate-100 text-slate-400 px-1 rounded">GTM</span>
+                <span style={{
+                  fontSize: "9px",
+                  padding: "1px 5px",
+                  borderRadius: "4px",
+                  background: "rgba(255,255,255,0.04)",
+                  color: "rgba(148,163,184,0.3)",
+                  fontWeight: 500,
+                }}>GTM</span>
               </span>
             );
           }
@@ -62,10 +103,27 @@ export default function AppNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="transition-colors whitespace-nowrap"
               style={{
-                color: isActive ? "var(--indigo)" : "var(--ink-secondary)",
+                color: isActive ? "#A5B4FC" : "rgba(226,232,240,0.5)",
                 fontWeight: isActive ? 600 : 400,
+                textDecoration: "none",
+                padding: "6px 10px",
+                borderRadius: "6px",
+                background: isActive ? "rgba(99,102,241,0.1)" : "transparent",
+                transition: "all 0.2s",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => {
+                if (!isActive) {
+                  e.currentTarget.style.color = "rgba(226,232,240,0.8)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isActive) {
+                  e.currentTarget.style.color = "rgba(226,232,240,0.5)";
+                  e.currentTarget.style.background = "transparent";
+                }
               }}
             >
               {link.label}
@@ -75,8 +133,20 @@ export default function AppNav() {
 
         <button
           onClick={signOut}
-          className="transition-colors whitespace-nowrap"
-          style={{ color: "var(--ink-muted)" }}
+          style={{
+            color: "rgba(148,163,184,0.4)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "6px 10px",
+            borderRadius: "6px",
+            fontSize: "13px",
+            fontFamily: "inherit",
+            transition: "color 0.2s",
+            whiteSpace: "nowrap",
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = "rgba(248,113,113,0.8)"}
+          onMouseLeave={e => e.currentTarget.style.color = "rgba(148,163,184,0.4)"}
         >
           Sign out
         </button>

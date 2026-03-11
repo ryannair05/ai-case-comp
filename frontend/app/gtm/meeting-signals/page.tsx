@@ -92,29 +92,94 @@ export default function MeetingSignalsPage() {
 
         {result && (
           <div className="mt-8 space-y-4 fade-up">
-            {/* Extracted payload */}
-            <div className="bg-gray-950 rounded-xl p-6 text-green-400 font-mono text-sm overflow-auto shadow-lg">
-              <h3 className="text-white text-lg font-bold mb-4" style={{ fontFamily: "Fraunces, Georgia, serif" }}>
-                Extracted CRM Payload
+            {/* Extracted signals — structured cards */}
+            <div className="bg-white rounded-xl border p-6 shadow-sm" style={{ borderColor: "var(--vellum-border)" }}>
+              <h3 className="text-lg font-bold mb-4" style={{ fontFamily: "Fraunces, Georgia, serif" }}>
+                Extracted Signals
               </h3>
-              <pre>{JSON.stringify(result, null, 2)}</pre>
+
+              {/* Client + Stage header */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="text-xl font-bold" style={{ color: "var(--ink-primary)" }}>
+                  {result.client_name}
+                </div>
+                {result.stage && (
+                  <span
+                    className="text-xs font-bold px-3 py-1 rounded-full capitalize"
+                    style={{
+                      background:
+                        result.stage === "closed_won" ? "rgba(16,185,129,0.1)"
+                          : result.stage === "closed_lost" ? "rgba(239,68,68,0.1)"
+                            : result.stage === "negotiation" ? "rgba(245,158,11,0.1)"
+                              : "rgba(99,102,241,0.1)",
+                      color:
+                        result.stage === "closed_won" ? "#059669"
+                          : result.stage === "closed_lost" ? "#DC2626"
+                            : result.stage === "negotiation" ? "#D97706"
+                              : "var(--indigo)",
+                    }}
+                  >
+                    {result.stage.replace("_", " ")}
+                  </span>
+                )}
+              </div>
+
+              {/* Signal detail cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {result.needs && (
+                  <div className="border rounded-lg p-4" style={{ borderColor: "var(--vellum-border)" }}>
+                    <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--indigo)" }}>
+                      Needs
+                    </div>
+                    <p className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                      {result.needs}
+                    </p>
+                  </div>
+                )}
+                {result.budget && (
+                  <div className="border rounded-lg p-4" style={{ borderColor: "var(--vellum-border)" }}>
+                    <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--indigo)" }}>
+                      Budget
+                    </div>
+                    <p className="text-sm font-mono" style={{ color: "var(--ink-primary)" }}>
+                      {result.budget}
+                    </p>
+                  </div>
+                )}
+                {result.timeline && (
+                  <div className="border rounded-lg p-4" style={{ borderColor: "var(--vellum-border)" }}>
+                    <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "var(--indigo)" }}>
+                      Timeline
+                    </div>
+                    <p className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                      {result.timeline}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Signal ID if available */}
+              {result.signal_id && (
+                <div className="mt-4 text-xs font-mono" style={{ color: "var(--ink-muted)" }}>
+                  Signal ID: {result.signal_id}
+                </div>
+              )}
             </div>
 
             {/* CRM push status */}
             <div
-              className={`rounded-xl p-4 flex items-center gap-3 border text-sm ${
-                result.crm_pushed
+              className={`rounded-xl p-4 flex items-center gap-3 border text-sm ${result.crm_pushed
                   ? "bg-green-50 border-green-200 text-green-800"
                   : "bg-amber-50 border-amber-200 text-amber-800"
-              }`}
+                }`}
             >
               <span className="text-xl">{result.crm_pushed ? "✓" : "⚠"}</span>
               <span>
                 {result.crm_pushed
                   ? "Deal automatically pushed to your CRM."
                   : result.crm_error
-                  ? `CRM push skipped: ${result.crm_error}`
-                  : "No CRM connected — connect one in Settings."}
+                    ? `CRM push skipped: ${result.crm_error}`
+                    : "No CRM connected — connect one in Settings."}
               </span>
             </div>
 

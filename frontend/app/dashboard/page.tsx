@@ -16,25 +16,226 @@ const METRICS_CONFIG = [
   { key: "avg_switching_cost_usd", label: "Avg Switching Cost", format: (v: number) => `$${v.toFixed(0)}`, alarm: null, target: "Growing →" },
 ] as const;
 
-function MetricCard({ config, value }: { config: typeof METRICS_CONFIG[number]; value: number }) {
+function MetricCard({ config, value, delay }: { config: typeof METRICS_CONFIG[number]; value: number; delay: number }) {
   const alarm = config.alarm;
   const isAlarming = alarm !== null && value >= alarm;
   return (
-    <div
-      className="bg-white border rounded-xl p-4 card-hover"
-      style={{ borderColor: isAlarming ? "#FECACA" : "var(--vellum-border)", background: isAlarming ? "#FFF5F5" : "white" }}
+    <div style={{
+      background: isAlarming ? "rgba(248,113,113,0.06)" : "rgba(255,255,255,0.03)",
+      border: `1px solid ${isAlarming ? "rgba(248,113,113,0.15)" : "rgba(255,255,255,0.06)"}`,
+      borderRadius: "14px",
+      padding: "20px",
+      transition: "all 0.25s",
+      animation: `dashFadeUp 0.4s ${delay}s ease both`,
+    }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.borderColor = isAlarming ? "rgba(248,113,113,0.25)" : "rgba(99,102,241,0.2)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.borderColor = isAlarming ? "rgba(248,113,113,0.15)" : "rgba(255,255,255,0.06)";
+      }}
     >
-      <div className="text-xs mb-1 uppercase tracking-wide" style={{ color: "var(--ink-muted)" }}>{config.label}</div>
-      <div className="text-2xl font-bold font-mono" style={{ color: isAlarming ? "#DC2626" : "var(--ink-primary)" }}>
+      <div style={{
+        fontSize: "10px", fontWeight: 500,
+        textTransform: "uppercase", letterSpacing: "0.8px",
+        color: "rgba(148,163,184,0.6)",
+        marginBottom: "8px",
+        fontFamily: "'Outfit', sans-serif",
+      }}>
+        {config.label}
+      </div>
+      <div style={{
+        fontSize: "26px", fontWeight: 700,
+        fontFamily: "'JetBrains Mono', monospace",
+        color: isAlarming ? "#F87171" : "#E2E8F0",
+        lineHeight: 1.2,
+      }}>
         {config.format(value)}
       </div>
-      <div className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>{config.target}</div>
+      <div style={{
+        fontSize: "11px", color: "rgba(148,163,184,0.4)",
+        marginTop: "6px",
+      }}>
+        {config.target}
+      </div>
       {isAlarming && (
-        <div className="text-xs text-red-500 mt-1 font-medium">⚠ Above alarm threshold</div>
+        <div style={{
+          fontSize: "11px", color: "#F87171",
+          marginTop: "6px", fontWeight: 500,
+          display: "flex", alignItems: "center", gap: "4px",
+        }}>
+          <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#F87171" }} />
+          Above threshold
+        </div>
       )}
     </div>
   );
 }
+
+// ── Win/Loss Modal ──────────────────────────────────────────────────
+
+interface WinLossModalProps {
+  type: "won" | "lost";
+  proposalTitle: string;
+  onSubmit: (reason: string, dealValue?: number) => void;
+  onCancel: () => void;
+  loading: boolean;
+}
+
+function WinLossModal({ type, proposalTitle, onSubmit, onCancel, loading }: WinLossModalProps) {
+  const [reason, setReason] = useState("");
+  const [dealValue, setDealValue] = useState("");
+
+  const isWon = type === "won";
+  const title = isWon ? "Mark as Won" : "Mark as Lost";
+  const reasonLabel = isWon ? "What helped you win this deal?" : "Why was this deal lost?";
+  const accent = isWon ? "#34D399" : "#F87171";
+  const accentBg = isWon ? "rgba(52,211,153,0.06)" : "rgba(248,113,113,0.06)";
+
+  return (
+    <div
+      onClick={onCancel}
+      style={{
+        position: "fixed", inset: 0, zIndex: 100,
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: "440px",
+          background: "#13151F",
+          borderRadius: "20px",
+          border: "1px solid rgba(255,255,255,0.06)",
+          animation: "dashFadeUp 0.2s ease both",
+        }}
+      >
+        <div style={{ padding: "28px", display: "flex", flexDirection: "column", gap: "18px" }}>
+          <div>
+            <h3 style={{
+              fontFamily: "'Outfit', sans-serif", fontSize: "18px",
+              fontWeight: 600, color: accent, margin: 0,
+            }}>
+              {title}
+            </h3>
+            <p style={{ fontSize: "13px", color: "rgba(148,163,184,0.5)", marginTop: "4px" }}>
+              {proposalTitle || "Untitled Proposal"}
+            </p>
+          </div>
+
+          <div>
+            <label style={{
+              display: "block", fontSize: "13px", fontWeight: 500,
+              color: "rgba(226,232,240,0.7)", marginBottom: "6px",
+              fontFamily: "'Outfit', sans-serif",
+            }}>
+              {reasonLabel}
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={isWon ? "e.g. strong pricing, personal connection…" : "e.g. budget constraints, competitor…"}
+              rows={3}
+              style={{
+                width: "100%", padding: "12px 14px",
+                border: "1.5px solid rgba(99,102,241,0.15)",
+                borderRadius: "10px",
+                fontSize: "13px", color: "#E2E8F0",
+                background: accentBg,
+                outline: "none", resize: "none",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+              autoFocus
+              onFocus={e => e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"}
+              onBlur={e => e.currentTarget.style.borderColor = "rgba(99,102,241,0.15)"}
+            />
+          </div>
+
+          {isWon && (
+            <div>
+              <label style={{
+                display: "block", fontSize: "13px", fontWeight: 500,
+                color: "rgba(226,232,240,0.7)", marginBottom: "6px",
+                fontFamily: "'Outfit', sans-serif",
+              }}>
+                Deal Value (optional)
+              </label>
+              <div style={{ position: "relative" }}>
+                <span style={{
+                  position: "absolute", left: "14px", top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: "13px", color: "rgba(148,163,184,0.4)",
+                }}>$</span>
+                <input
+                  type="number"
+                  value={dealValue}
+                  onChange={(e) => setDealValue(e.target.value)}
+                  placeholder="e.g. 8500"
+                  style={{
+                    width: "100%", padding: "10px 14px 10px 28px",
+                    border: "1.5px solid rgba(99,102,241,0.15)",
+                    borderRadius: "10px",
+                    fontSize: "13px", color: "#E2E8F0",
+                    background: "rgba(255,255,255,0.03)",
+                    outline: "none",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                  onFocus={e => e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"}
+                  onBlur={e => e.currentTarget.style.borderColor = "rgba(99,102,241,0.15)"}
+                />
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: "10px", paddingTop: "4px" }}>
+            <button
+              onClick={onCancel}
+              style={{
+                flex: 1, padding: "12px",
+                borderRadius: "10px",
+                border: "1.5px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.02)",
+                fontSize: "13px", fontWeight: 500,
+                color: "rgba(226,232,240,0.5)",
+                cursor: "pointer",
+                fontFamily: "'Outfit', sans-serif",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onSubmit(reason, dealValue ? Number(dealValue) : undefined)}
+              disabled={loading}
+              style={{
+                flex: 1, padding: "12px",
+                borderRadius: "10px",
+                border: "none",
+                background: accent,
+                fontSize: "13px", fontWeight: 600,
+                color: "#0B0F1A",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontFamily: "'Outfit', sans-serif",
+                opacity: loading ? 0.5 : 1,
+                transition: "all 0.2s",
+              }}
+            >
+              {loading ? "Saving…" : `Confirm ${isWon ? "Win" : "Loss"}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Dashboard ──────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -44,6 +245,9 @@ export default function DashboardPage() {
   const [cmStatus, setCmStatus] = useState<CMStatus | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [modal, setModal] = useState<{ type: "won" | "lost"; proposal: Proposal } | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -57,293 +261,493 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleModalSubmit = async (reason: string, dealValue?: number) => {
+    if (!modal) return;
+    setModalLoading(true);
+    try {
+      const data: Record<string, unknown> = {
+        outcome: modal.type,
+        ...(modal.type === "won" ? { win_reason: reason } : { lose_reason: reason }),
+      };
+      if (dealValue) data.value_usd = dealValue;
+      await proposalsApi.update(modal.proposal.id, data);
+      setProposals((prev) =>
+        prev.map((x) => (x.id === modal.proposal.id ? { ...x, outcome: modal.type as "won" | "lost" } : x))
+      );
+      setModal(null);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   const isGtm = user?.tier === "gtm_agent";
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--vellum)" }}>
-      <AppNav />
+    <>
+      <style>{`
+        @keyframes dashFadeUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
 
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        {/* Financial metrics */}
-        <div className="fade-up">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold" style={{ fontFamily: "Fraunces, Georgia, serif" }}>Financial Metrics</h2>
-            <div className="text-xs" style={{ color: "var(--ink-muted)" }}>
-              Scenario:{" "}
-              <span
-                className="font-medium font-mono"
-                style={{
-                  color:
-                    unitEcon?.on_track_for === "bull"
-                      ? "#F59E0B"
-                      : unitEcon?.on_track_for === "base"
-                      ? "#6366F1"
-                      : "#EF4444",
-                }}
-              >
-                {unitEcon?.on_track_for?.toUpperCase() ?? "—"} CASE
-              </span>
-            </div>
-          </div>
-          {loading ? (
-            <div className="grid grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white border rounded-xl p-4 h-24 animate-pulse" style={{ borderColor: "var(--vellum-border)" }} />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-4">
-              {METRICS_CONFIG.map((config) => (
-                <MetricCard
-                  key={config.key}
-                  config={config}
-                  value={unitEcon?.[config.key] ?? 0}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+      <div style={{ minHeight: "100vh", background: "#0B0F1A", fontFamily: "'DM Sans', sans-serif" }}>
+        <AppNav />
 
-        {/* Win rate + Context-Mapper */}
-        <div className="grid grid-cols-2 gap-6 fade-up-1">
-          {/* Win rate */}
-          <div className="bg-white border rounded-xl p-5" style={{ borderColor: "var(--vellum-border)" }}>
-            <h3 className="font-bold mb-4" style={{ fontFamily: "Fraunces, Georgia, serif" }}>Win Rate</h3>
-            {winRate ? (
-              <div className="space-y-3">
-                <div className="text-4xl font-bold font-mono" style={{ color: "var(--indigo)" }}>
-                  {((winRate.win_rate ?? 0) * 100).toFixed(0)}%
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-sm">
-                  <div className="text-center">
-                    <div className="font-bold font-mono" style={{ color: "var(--ink-primary)" }}>{winRate.total_proposals}</div>
-                    <div className="text-xs" style={{ color: "var(--ink-muted)" }}>Total</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold font-mono text-green-600">{winRate.won}</div>
-                    <div className="text-xs" style={{ color: "var(--ink-muted)" }}>Won</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold font-mono text-red-400">{winRate.lost}</div>
-                    <div className="text-xs" style={{ color: "var(--ink-muted)" }}>Lost</div>
-                  </div>
-                </div>
-                <div className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                  Avg deal size: <strong className="font-mono">${winRate.avg_deal_size_usd?.toFixed(0)}</strong>
-                </div>
+        {modal && (
+          <WinLossModal
+            type={modal.type}
+            proposalTitle={modal.proposal.title || "Untitled"}
+            onSubmit={handleModalSubmit}
+            onCancel={() => setModal(null)}
+            loading={modalLoading}
+          />
+        )}
+
+        <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "32px 24px" }}>
+
+          {/* ── Financial Metrics ── */}
+          <div style={{ animation: "dashFadeUp 0.4s ease both" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h2 style={{
+                fontFamily: "'Outfit', sans-serif", fontSize: "18px",
+                fontWeight: 600, color: "#E2E8F0", margin: 0,
+              }}>
+                Financial Metrics
+              </h2>
+              <div style={{ fontSize: "12px", color: "rgba(148,163,184,0.5)" }}>
+                Scenario:{" "}
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 500,
+                  color: unitEcon?.on_track_for === "bull" ? "#FBBF24"
+                    : unitEcon?.on_track_for === "base" ? "#818CF8" : "#F87171",
+                }}>
+                  {unitEcon?.on_track_for?.toUpperCase() ?? "—"} CASE
+                </span>
+              </div>
+            </div>
+            {loading ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.04)",
+                    borderRadius: "14px", height: "100px",
+                  }} />
+                ))}
               </div>
             ) : (
-              <div className="animate-pulse" style={{ color: "var(--ink-muted)" }}>Loading…</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
+                {METRICS_CONFIG.map((config, i) => (
+                  <MetricCard
+                    key={config.key}
+                    config={config}
+                    value={unitEcon?.[config.key] ?? 0}
+                    delay={0.05 * i}
+                  />
+                ))}
+              </div>
             )}
           </div>
 
-          {/* Context-Mapper status */}
-          <div className="bg-white border rounded-xl p-5" style={{ borderColor: "var(--vellum-border)" }}>
-            <h3 className="font-bold mb-4" style={{ fontFamily: "Fraunces, Georgia, serif" }}>Context-Mapper</h3>
-            {cmStatus ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ background: cmStatus.context_mapper_active ? "#10B981" : "#CBD5E1" }}
-                  />
-                  <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                    {cmStatus.context_mapper_active ? "Active" : "Inactive"}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-sm">
-                  <div className="text-center">
-                    <div className="font-bold font-mono" style={{ color: "var(--ink-primary)" }}>{cmStatus.proposals_indexed}</div>
-                    <div className="text-xs" style={{ color: "var(--ink-muted)" }}>Proposals</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold font-mono" style={{ color: "var(--ink-primary)" }}>{cmStatus.pricing_rows}</div>
-                    <div className="text-xs" style={{ color: "var(--ink-muted)" }}>Pricing rows</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold font-mono" style={{ color: "var(--ink-primary)" }}>{cmStatus.brand_examples}</div>
-                    <div className="text-xs" style={{ color: "var(--ink-muted)" }}>Brand examples</div>
-                  </div>
-                </div>
+          {/* ── Win Rate + Context-Mapper ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "24px" }}>
 
-                {/* Milestone progress bar */}
-                {cmStatus.milestone_progress_pct !== undefined && cmStatus.next_milestone && (
-                  <div className="mt-2">
-                    <div className="flex justify-between text-xs mb-1" style={{ color: "var(--ink-secondary)" }}>
-                      <span>Next: <strong>{cmStatus.next_milestone}</strong></span>
-                      <span className="font-mono">{Math.round(cmStatus.milestone_progress_pct)}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--vellum-border)" }}>
-                      <div
-                        className="h-1.5 rounded-full transition-all duration-700"
-                        style={{ width: `${cmStatus.milestone_progress_pct}%`, background: "var(--indigo)" }}
-                      />
-                    </div>
-                    {cmStatus.proposals_to_next_milestone !== undefined && (
-                      <p className="text-xs mt-1" style={{ color: "var(--ink-muted)" }}>
-                        {cmStatus.proposals_to_next_milestone} proposals to next milestone
-                        {cmStatus.estimated_days_to_milestone !== undefined && cmStatus.estimated_days_to_milestone > 0
-                          ? ` · ~${cmStatus.estimated_days_to_milestone}d`
-                          : ""}
-                      </p>
-                    )}
+            {/* Win Rate */}
+            <div style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "16px", padding: "24px",
+              animation: "dashFadeUp 0.4s 0.1s ease both",
+            }}>
+              <h3 style={{
+                fontFamily: "'Outfit', sans-serif", fontSize: "15px",
+                fontWeight: 600, color: "#E2E8F0",
+                marginBottom: "16px",
+              }}>
+                Win Rate
+              </h3>
+              {winRate ? (
+                <div>
+                  <div style={{
+                    fontSize: "42px", fontWeight: 700,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: "#818CF8",
+                    lineHeight: 1,
+                  }}>
+                    {((winRate.win_rate ?? 0) * 100).toFixed(0)}%
                   </div>
-                )}
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: "12px", marginTop: "20px",
+                  }}>
+                    {[
+                      { val: winRate.total_proposals, label: "Total", color: "#E2E8F0" },
+                      { val: winRate.won, label: "Won", color: "#34D399" },
+                      { val: winRate.lost, label: "Lost", color: "#F87171" },
+                    ].map(item => (
+                      <div key={item.label} style={{ textAlign: "center" }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "18px", fontWeight: 600, color: item.color }}>
+                          {item.val}
+                        </div>
+                        <div style={{ fontSize: "11px", color: "rgba(148,163,184,0.4)", marginTop: "2px" }}>
+                          {item.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{
+                    fontSize: "13px", color: "rgba(148,163,184,0.5)",
+                    marginTop: "16px",
+                  }}>
+                    Avg deal size: <strong style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: "#A5B4FC",
+                    }}>${winRate.avg_deal_size_usd?.toFixed(0)}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: "rgba(148,163,184,0.3)" }}>Loading…</div>
+              )}
+            </div>
 
+            {/* Context-Mapper */}
+            <div style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "16px", padding: "24px",
+              animation: "dashFadeUp 0.4s 0.15s ease both",
+            }}>
+              <h3 style={{
+                fontFamily: "'Outfit', sans-serif", fontSize: "15px",
+                fontWeight: 600, color: "#E2E8F0",
+                marginBottom: "16px",
+              }}>
+                Context-Mapper
+              </h3>
+              {cmStatus ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+                    <span style={{
+                      width: "7px", height: "7px", borderRadius: "50%",
+                      background: cmStatus.context_mapper_active ? "#34D399" : "rgba(148,163,184,0.3)",
+                      boxShadow: cmStatus.context_mapper_active ? "0 0 8px rgba(52,211,153,0.4)" : "none",
+                    }} />
+                    <span style={{ fontSize: "13px", color: "rgba(226,232,240,0.6)" }}>
+                      {cmStatus.context_mapper_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: "12px",
+                  }}>
+                    {[
+                      { val: cmStatus.proposals_indexed, label: "Proposals" },
+                      { val: cmStatus.pricing_rows, label: "Pricing rows" },
+                      { val: cmStatus.brand_examples, label: "Brand examples" },
+                    ].map(item => (
+                      <div key={item.label} style={{ textAlign: "center" }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "18px", fontWeight: 600, color: "#E2E8F0" }}>
+                          {item.val}
+                        </div>
+                        <div style={{ fontSize: "11px", color: "rgba(148,163,184,0.4)", marginTop: "2px" }}>
+                          {item.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {cmStatus.milestone_progress_pct !== undefined && cmStatus.next_milestone && (
+                    <div style={{ marginTop: "18px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "6px" }}>
+                        <span style={{ color: "rgba(226,232,240,0.5)" }}>
+                          Next: <strong style={{ color: "#A5B4FC" }}>{cmStatus.next_milestone}</strong>
+                        </span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#818CF8" }}>
+                          {Math.round(cmStatus.milestone_progress_pct)}%
+                        </span>
+                      </div>
+                      <div style={{
+                        height: "3px", borderRadius: "2px",
+                        background: "rgba(255,255,255,0.06)",
+                        overflow: "hidden",
+                      }}>
+                        <div style={{
+                          height: "100%", borderRadius: "2px",
+                          width: `${cmStatus.milestone_progress_pct}%`,
+                          background: "linear-gradient(90deg, #6366F1, #818CF8)",
+                          transition: "width 0.7s ease",
+                        }} />
+                      </div>
+                      {cmStatus.proposals_to_next_milestone !== undefined && (
+                        <p style={{ fontSize: "11px", color: "rgba(148,163,184,0.35)", marginTop: "6px" }}>
+                          {cmStatus.proposals_to_next_milestone} proposals to next milestone
+                          {cmStatus.estimated_days_to_milestone !== undefined && cmStatus.estimated_days_to_milestone > 0
+                            ? ` · ~${cmStatus.estimated_days_to_milestone}d` : ""}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <Link
+                    href="/moat-meter"
+                    style={{
+                      display: "inline-block",
+                      fontSize: "12px", color: "#818CF8",
+                      textDecoration: "none",
+                      marginTop: "14px",
+                      transition: "color 0.2s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#A5B4FC"}
+                    onMouseLeave={e => e.currentTarget.style.color = "#818CF8"}
+                  >
+                    View Moat Meter →
+                  </Link>
+                </div>
+              ) : (
+                <div style={{ color: "rgba(148,163,184,0.3)" }}>Loading…</div>
+              )}
+            </div>
+          </div>
+
+          {/* ── GTM Quick Links ── */}
+          {isGtm && (
+            <div style={{
+              display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "14px", marginTop: "24px",
+              animation: "dashFadeUp 0.4s 0.2s ease both",
+            }}>
+              {[
+                { href: "/gtm/meeting-signals", label: "Meeting Signals", desc: "Extract CRM signals from call notes" },
+                { href: "/gtm/outreach", label: "Outreach Sequences", desc: "Generate personalized email drip" },
+                { href: "/gtm", label: "Deal Pipeline", desc: "Drag-and-drop Kanban board" },
+              ].map((item) => (
                 <Link
-                  href="/moat-meter"
-                  className="inline-block text-xs hover:underline"
-                  style={{ color: "var(--indigo)" }}
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    display: "block",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: "14px", padding: "18px",
+                    textDecoration: "none",
+                    transition: "all 0.25s",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.borderColor = "rgba(99,102,241,0.2)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+                  }}
                 >
-                  View Moat Meter →
+                  <div style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: "14px", fontWeight: 600,
+                    color: "#E2E8F0", marginBottom: "4px",
+                  }}>{item.label}</div>
+                  <div style={{ fontSize: "12px", color: "rgba(148,163,184,0.5)" }}>{item.desc}</div>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* ── Phase Gate ── */}
+          {phaseGate && (
+            <div style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "16px", padding: "24px",
+              marginTop: "24px",
+              animation: "dashFadeUp 0.4s 0.25s ease both",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+                <h3 style={{
+                  fontFamily: "'Outfit', sans-serif", fontSize: "15px",
+                  fontWeight: 600, color: "#E2E8F0", margin: 0,
+                }}>
+                  Phase 1 → 2 Gate
+                </h3>
+                <span style={{
+                  fontSize: "11px", padding: "4px 12px",
+                  borderRadius: "20px", fontWeight: 500,
+                  background: phaseGate.all_passed ? "rgba(52,211,153,0.1)" : "rgba(255,255,255,0.04)",
+                  color: phaseGate.all_passed ? "#34D399" : "rgba(148,163,184,0.5)",
+                }}>
+                  {phaseGate.all_passed ? "GTM Agent Unlocked" : "Phase 1 in progress"}
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {([phaseGate.gate1, phaseGate.gate2, phaseGate.gate3] as Gate[]).map((gate) => (
+                  <div key={gate.label} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{
+                      width: "22px", height: "22px", borderRadius: "50%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: gate.passed ? "rgba(52,211,153,0.15)" : "rgba(255,255,255,0.04)",
+                      color: gate.passed ? "#34D399" : "rgba(148,163,184,0.2)",
+                      fontSize: "11px",
+                    }}>
+                      {gate.passed ? "✓" : "○"}
+                    </div>
+                    <span style={{ flex: 1, fontSize: "13px", color: "rgba(226,232,240,0.6)" }}>
+                      {gate.label}
+                    </span>
+                    <span style={{
+                      fontSize: "12px",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: "rgba(148,163,184,0.4)",
+                    }}>
+                      {gate.current} / {gate.target}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Recent Proposals ── */}
+          <div style={{
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "16px", padding: "24px",
+            marginTop: "24px",
+            animation: "dashFadeUp 0.4s 0.3s ease both",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+              <h3 style={{
+                fontFamily: "'Outfit', sans-serif", fontSize: "15px",
+                fontWeight: 600, color: "#E2E8F0", margin: 0,
+              }}>
+                Recent Proposals
+              </h3>
+              <Link
+                href="/proposals"
+                style={{ fontSize: "12px", color: "#818CF8", textDecoration: "none" }}
+                onMouseEnter={e => e.currentTarget.style.color = "#A5B4FC"}
+                onMouseLeave={e => e.currentTarget.style.color = "#818CF8"}
+              >
+                View all →
+              </Link>
+            </div>
+            {proposals.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 0" }}>
+                <div style={{ fontSize: "40px", marginBottom: "16px", opacity: 0.6 }}>✦</div>
+                <h4 style={{
+                  fontFamily: "'Outfit', sans-serif", fontSize: "17px",
+                  fontWeight: 600, color: "#E2E8F0", marginBottom: "8px",
+                }}>
+                  Your first proposal is one click away
+                </h4>
+                <p style={{
+                  fontSize: "13px", color: "rgba(148,163,184,0.5)",
+                  maxWidth: "300px", margin: "0 auto 24px",
+                  lineHeight: 1.6,
+                }}>
+                  Generate a tailored proposal in under 60 seconds. Each one teaches Context-Mapper how your firm sells.
+                </p>
+                <Link
+                  href="/proposals/new"
+                  style={{
+                    display: "inline-block",
+                    fontSize: "13px", fontWeight: 600,
+                    fontFamily: "'Outfit', sans-serif",
+                    padding: "10px 24px",
+                    borderRadius: "10px",
+                    background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+                    color: "#fff",
+                    textDecoration: "none",
+                    transition: "transform 0.15s, box-shadow 0.15s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(99,102,241,0.3)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  ✦ Generate your first proposal
                 </Link>
               </div>
             ) : (
-              <div className="animate-pulse" style={{ color: "var(--ink-muted)" }}>Loading…</div>
+              <div>
+                {proposals.map((p, i) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "14px 0",
+                      borderTop: i > 0 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: "14px", fontWeight: 500, color: "#E2E8F0" }}>
+                        {p.title || "Untitled"}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "rgba(148,163,184,0.4)", marginTop: "2px" }}>
+                        {p.client_name || "—"}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      {p.value_usd && (
+                        <span style={{
+                          fontSize: "13px",
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: "rgba(148,163,184,0.6)",
+                        }}>
+                          ${p.value_usd.toLocaleString()}
+                        </span>
+                      )}
+                      {p.outcome === "pending" ? (
+                        <>
+                          <button
+                            onClick={() => setModal({ type: "won", proposal: p })}
+                            style={{
+                              fontSize: "11px", padding: "4px 10px",
+                              borderRadius: "16px", border: "none",
+                              background: "rgba(52,211,153,0.1)",
+                              color: "#34D399",
+                              cursor: "pointer", fontWeight: 500,
+                              transition: "background 0.2s",
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = "rgba(52,211,153,0.2)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "rgba(52,211,153,0.1)"}
+                          >
+                            Won ✓
+                          </button>
+                          <button
+                            onClick={() => setModal({ type: "lost", proposal: p })}
+                            style={{
+                              fontSize: "11px", padding: "4px 10px",
+                              borderRadius: "16px", border: "none",
+                              background: "rgba(248,113,113,0.1)",
+                              color: "#F87171",
+                              cursor: "pointer", fontWeight: 500,
+                              transition: "background 0.2s",
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = "rgba(248,113,113,0.2)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "rgba(248,113,113,0.1)"}
+                          >
+                            Lost ✗
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{
+                          fontSize: "11px", padding: "3px 10px",
+                          borderRadius: "16px", fontWeight: 500,
+                          background: p.outcome === "won" ? "rgba(52,211,153,0.1)" : p.outcome === "lost" ? "rgba(248,113,113,0.1)" : "rgba(255,255,255,0.04)",
+                          color: p.outcome === "won" ? "#34D399" : p.outcome === "lost" ? "#F87171" : "rgba(148,163,184,0.4)",
+                        }}>
+                          {p.outcome ?? "pending"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
-
-        {/* GTM quick links — for gtm_agent tier */}
-        {isGtm && (
-          <div className="grid grid-cols-3 gap-4 fade-up-2">
-            {[
-              { href: "/gtm/meeting-signals", label: "Meeting Signals", desc: "Extract CRM signals from call notes" },
-              { href: "/gtm/outreach", label: "Outreach Sequences", desc: "Generate personalized email drip" },
-              { href: "/gtm", label: "Deal Pipeline", desc: "Drag-and-drop Kanban board" },
-            ].map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="bg-white border rounded-xl p-4 card-hover block"
-                style={{ borderColor: "var(--vellum-border)" }}
-              >
-                <div className="font-semibold text-sm mb-1" style={{ color: "var(--ink-primary)" }}>{item.label}</div>
-                <div className="text-xs" style={{ color: "var(--ink-secondary)" }}>{item.desc}</div>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* Phase gate */}
-        {phaseGate && (
-          <div className="bg-white border rounded-xl p-5 fade-up-2" style={{ borderColor: "var(--vellum-border)" }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold" style={{ fontFamily: "Fraunces, Georgia, serif" }}>Phase 1 → 2 Gate</h3>
-              <span
-                className="text-xs px-2 py-1 rounded-full font-medium"
-                style={{
-                  background: phaseGate.all_passed ? "rgba(16,185,129,0.1)" : "rgba(0,0,0,0.05)",
-                  color: phaseGate.all_passed ? "#059669" : "var(--ink-secondary)",
-                }}
-              >
-                {phaseGate.all_passed ? "GTM Agent Unlocked" : "Phase 1 in progress"}
-              </span>
-            </div>
-            <div className="space-y-2">
-              {([phaseGate.gate1, phaseGate.gate2, phaseGate.gate3] as Gate[]).map((gate) => (
-                <div key={gate.label} className="flex items-center gap-3">
-                  <span className={`text-lg ${gate.passed ? "text-green-500" : "text-gray-300"}`}>
-                    {gate.passed ? "✓" : "○"}
-                  </span>
-                  <span className="text-sm flex-1" style={{ color: "var(--ink-secondary)" }}>{gate.label}</span>
-                  <span className="text-xs font-mono" style={{ color: "var(--ink-muted)" }}>
-                    {gate.current} / {gate.target}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Recent proposals */}
-        <div className="bg-white border rounded-xl p-5 fade-up-3" style={{ borderColor: "var(--vellum-border)" }}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold" style={{ fontFamily: "Fraunces, Georgia, serif" }}>Recent Proposals</h3>
-            <Link href="/proposals" className="text-xs hover:underline" style={{ color: "var(--indigo)" }}>
-              View all →
-            </Link>
-          </div>
-          {proposals.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-5xl mb-4">✦</div>
-              <h4 className="font-bold text-lg mb-2" style={{ fontFamily: "Fraunces, Georgia, serif", color: "var(--ink-primary)" }}>
-                Your first proposal is one click away
-              </h4>
-              <p className="text-sm mb-5 max-w-xs mx-auto" style={{ color: "var(--ink-secondary)" }}>
-                Generate a tailored proposal in under 60 seconds. Each one teaches Context-Mapper how your firm sells.
-              </p>
-              <Link
-                href="/proposals/new"
-                className="inline-block text-sm font-medium px-5 py-2.5 rounded-xl text-white"
-                style={{ background: "var(--indigo)" }}
-              >
-                ✦ Generate your first proposal
-              </Link>
-            </div>
-          ) : (
-            <div className="divide-y" style={{ borderColor: "var(--vellum-border)" }}>
-              {proposals.map((p) => (
-                <div key={p.id} className="py-3 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-sm" style={{ color: "var(--ink-primary)" }}>{p.title || "Untitled"}</div>
-                    <div className="text-xs" style={{ color: "var(--ink-muted)" }}>{p.client_name || "—"}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {p.value_usd && (
-                      <span className="text-sm font-mono" style={{ color: "var(--ink-secondary)" }}>${p.value_usd.toLocaleString()}</span>
-                    )}
-                    {p.outcome === "pending" ? (
-                      <>
-                        <button
-                          onClick={async () => {
-                            const reason = prompt("What helped you win this deal?");
-                            if (reason === null) return;
-                            try {
-                              await proposalsApi.update(p.id, { outcome: "won", win_reason: reason });
-                              setProposals((prev) =>
-                                prev.map((x) => (x.id === p.id ? { ...x, outcome: "won" as const } : x))
-                              );
-                            } catch (e) { console.error(e); }
-                          }}
-                          className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 hover:bg-green-200 font-medium transition-colors"
-                        >
-                          Won ✓
-                        </button>
-                        <button
-                          onClick={async () => {
-                            const reason = prompt("Why was this deal lost?");
-                            if (reason === null) return;
-                            try {
-                              await proposalsApi.update(p.id, { outcome: "lost", lose_reason: reason });
-                              setProposals((prev) =>
-                                prev.map((x) => (x.id === p.id ? { ...x, outcome: "lost" as const } : x))
-                              );
-                            } catch (e) { console.error(e); }
-                          }}
-                          className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-500 hover:bg-red-200 font-medium transition-colors"
-                        >
-                          Lost ✗
-                        </button>
-                      </>
-                    ) : (
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full"
-                        style={{
-                          background: p.outcome === "won" ? "rgba(16,185,129,0.1)" : p.outcome === "lost" ? "rgba(239,68,68,0.1)" : "rgba(0,0,0,0.05)",
-                          color: p.outcome === "won" ? "#059669" : p.outcome === "lost" ? "#DC2626" : "var(--ink-muted)",
-                        }}
-                      >
-                        {p.outcome ?? "pending"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+    </>
   );
 }

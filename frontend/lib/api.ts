@@ -3,7 +3,7 @@
  * All requests include the JWT token from localStorage for customer_id validation.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://api.draftly.ai";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 
 function getToken(): string {
   if (typeof window === "undefined") return "";

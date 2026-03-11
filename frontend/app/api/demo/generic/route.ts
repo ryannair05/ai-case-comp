@@ -5,7 +5,7 @@
 import OpenAI from "openai";
 import { NextRequest } from "next/server";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "sk-placeholder" });
 
 export async function POST(req: NextRequest) {
   const { rfp_text } = await req.json();

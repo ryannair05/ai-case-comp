@@ -1,15 +1,10 @@
 "use client";
 
 /**
- * /proposals/new — Proposal generation UI.
- *
- * Improvements:
- * - Cold-start gap indicator: shows how many proposals are indexed and a
- *   progress bar toward the 15-proposal threshold for full Context-Mapper.
- * - Star rating widget: after generation, lets user rate proposal quality
- *   (1-5 stars) which is POSTed back via proposalsApi.update().
- * - Section-by-section editing: parses generated markdown by H2 (##) headers
- *   into editable sections so users can tweak individual sections.
+ * /proposals/new — Proposal generation workspace.
+ * Aesthetic: Creative studio — dark with warm amber accent.
+ * Like a craftsman's workbench for proposal writing.
+ * Typography: Fraunces (display) + Crimson Pro (body/inputs) + JetBrains Mono (data).
  */
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
@@ -21,7 +16,7 @@ import AppNav from "@/app/components/AppNav";
 
 const EXAMPLE_RFPS = [
   "We need a 3-month social media strategy for our B2B SaaS company launching in Q3. Budget TBD based on proposal.",
-  "Looking for a brand refresh including new logo, website copy, and one-pager. We&apos;re a 12-person accounting firm.",
+  "Looking for a brand refresh including new logo, website copy, and one-pager. We\u0027re a 12-person accounting firm.",
   "We need help with our annual tax planning strategy and implementing a proactive approach for next fiscal year.",
 ];
 
@@ -30,7 +25,6 @@ interface ProposalSection {
   body: string;
 }
 
-/** Split markdown content into sections by ## headers */
 function splitIntoSections(content: string): ProposalSection[] {
   const lines = content.split("\n");
   const sections: ProposalSection[] = [];
@@ -54,11 +48,10 @@ function splitIntoSections(content: string): ProposalSection[] {
   return sections;
 }
 
-/** Star rating component */
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
   return (
-    <div className="flex gap-1">
+    <div style={{ display: "flex", gap: "2px" }}>
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
@@ -66,8 +59,13 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
           onClick={() => onChange(star)}
           onMouseEnter={() => setHover(star)}
           onMouseLeave={() => setHover(0)}
-          className="text-2xl transition-transform hover:scale-110"
-          style={{ color: star <= (hover || value) ? "#f59e0b" : "#d1d5db" }}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontSize: "22px",
+            color: star <= (hover || value) ? "#F59E0B" : "rgba(255,255,255,0.08)",
+            transition: "transform 0.15s, color 0.15s",
+            transform: star <= (hover || value) ? "scale(1.1)" : "scale(1)",
+          }}
         >
           ★
         </button>
@@ -88,28 +86,24 @@ function NewProposalInner() {
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  // Cold-start state
   const [proposalsIndexed, setProposalsIndexed] = useState<number | null>(null);
   const COLD_START_THRESHOLD = 15;
 
-  // Star rating state
   const [starRating, setStarRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
 
-  // Section editing state
   const [sectionMode, setSectionMode] = useState(false);
   const [sections, setSections] = useState<ProposalSection[]>([]);
   const [editingSection, setEditingSection] = useState<number | null>(null);
 
   const isProfessional = hasProfessionalAccess(user?.tier);
 
-  // Fetch Context-Mapper status for cold-start indicator
   useEffect(() => {
     if (!isProfessional) return;
     contextMapperApi.status().then((status) => {
       setProposalsIndexed(status?.proposals_indexed ?? 0);
-    }).catch(() => {});
+    }).catch(() => { });
   }, [isProfessional]);
 
   async function handleGenerate() {
@@ -186,259 +180,541 @@ function NewProposalInner() {
     : null;
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--vellum)" }}>
-      <AppNav />
+    <>
+      <style>{`
+        @keyframes propReveal {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes propSpin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes propPulse {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+        .prop-input {
+          width: 100%;
+          padding: 14px 16px;
+          border: 1.5px solid rgba(255,255,255,0.08);
+          border-radius: 10px;
+          font-family: 'Crimson Pro', Georgia, serif;
+          font-size: 16px;
+          color: #F5F0E8;
+          background: rgba(255,255,255,0.03);
+          transition: border-color 0.2s, box-shadow 0.2s;
+          outline: none;
+          line-height: 1.6;
+        }
+        .prop-input::placeholder {
+          color: rgba(245,240,232,0.2);
+          font-style: italic;
+        }
+        .prop-input:focus {
+          border-color: rgba(245,158,11,0.4);
+          box-shadow: 0 0 0 3px rgba(245,158,11,0.06);
+        }
+        .prop-textarea { resize: none; }
+      `}</style>
 
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        <div className="fade-up">
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Fraunces, Georgia, serif" }}>Generate a Proposal</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--ink-secondary)" }}>
-            Powered by Claude Sonnet + your Context-Mapper institutional memory.
-          </p>
-        </div>
+      <div style={{
+        minHeight: "100vh",
+        background: "#13110E",
+        backgroundImage: `
+          radial-gradient(ellipse at 20% 0%, rgba(245,158,11,0.04) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 100%, rgba(120,113,108,0.03) 0%, transparent 50%)
+        `,
+        fontFamily: "'Crimson Pro', Georgia, serif",
+      }}>
+        <AppNav />
 
-        {!isProfessional && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 fade-up-1">
-            <span className="text-amber-500 text-xl">⚠</span>
-            <div>
-              <div className="font-medium text-amber-800 text-sm">Professional tier required</div>
-              <div className="text-amber-700 text-xs mt-0.5">
-                Context-Mapper AI generation requires the Professional plan ($249/mo).{" "}
-                <a href="/billing" className="underline">Upgrade →</a>
-              </div>
-            </div>
-          </div>
-        )}
+        <div style={{ maxWidth: "780px", margin: "0 auto", padding: "40px 24px" }}>
 
-        {/* Cold-start gap indicator */}
-        {isProfessional && coldStartPct !== null && coldStartPct < 100 && (
-          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 fade-up-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-indigo-800">
-                Context-Mapper warming up — {proposalsIndexed}/{COLD_START_THRESHOLD} proposals indexed
-              </span>
-              <span className="text-xs text-indigo-600">{Math.round(coldStartPct)}%</span>
-            </div>
-            <div className="h-2 bg-indigo-100 rounded-full overflow-hidden">
-              <div
-                className="h-2 rounded-full transition-all duration-500"
-                style={{ width: `${coldStartPct}%`, background: "var(--indigo)" }}
-              />
-            </div>
-            <p className="text-xs text-indigo-600 mt-2">
-              Upload {COLD_START_THRESHOLD - (proposalsIndexed ?? 0)} more past proposals to unlock full personalization.{" "}
-              <Link href="/onboarding" className="underline">Upload now →</Link>
+          {/* Header */}
+          <div style={{ marginBottom: "36px", animation: "propReveal 0.5s ease both" }}>
+            <h1 style={{
+              fontFamily: "'Fraunces', Georgia, serif",
+              fontSize: "34px", fontWeight: 700,
+              color: "#F5F0E8",
+              letterSpacing: "-0.5px",
+              margin: "0 0 8px 0",
+            }}>
+              Craft a Proposal
+            </h1>
+            <p style={{
+              fontSize: "16px", fontStyle: "italic",
+              color: "rgba(245,240,232,0.35)",
+            }}>
+              Powered by Claude Sonnet + your Context-Mapper institutional memory.
             </p>
           </div>
-        )}
 
-        {/* Input panel */}
-        <div className="bg-white border rounded-2xl p-6 space-y-5 shadow-sm fade-up-2" style={{ borderColor: "var(--vellum-border)" }}>
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: "var(--ink-secondary)" }}>
-              Client name <span className="font-normal" style={{ color: "var(--ink-muted)" }}>(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="e.g. Brightfield Technologies"
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              style={{ borderColor: "var(--vellum-border)" }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: "var(--ink-secondary)" }}>
-              Deal value <span className="font-normal" style={{ color: "var(--ink-muted)" }}>(USD, optional)</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-sm" style={{ color: "var(--ink-muted)" }}>$</span>
-              <input
-                type="number"
-                value={valueUsd}
-                onChange={(e) => setValueUsd(e.target.value)}
-                placeholder="12500"
-                className="w-full border rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                style={{ borderColor: "var(--vellum-border)" }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: "var(--ink-secondary)" }}>
-              RFP / Brief <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              value={rfpText}
-              onChange={(e) => setRfpText(e.target.value)}
-              rows={8}
-              placeholder="Paste the client's RFP, project brief, or describe what they need…"
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-              style={{ borderColor: "var(--vellum-border)" }}
-            />
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs" style={{ color: "var(--ink-muted)" }}>{rfpText.length} chars (min 50)</span>
-              <div className="flex gap-2">
-                {EXAMPLE_RFPS.map((ex, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setRfpText(ex)}
-                    className="text-xs hover:underline"
-                    style={{ color: "var(--indigo)" }}
-                  >
-                    Example {i + 1}
-                  </button>
-                ))}
+          {/* Not professional warning */}
+          {!isProfessional && (
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: "12px",
+              padding: "16px 20px", borderRadius: "12px",
+              background: "rgba(245,158,11,0.06)",
+              border: "1px solid rgba(245,158,11,0.12)",
+              marginBottom: "20px",
+              animation: "propReveal 0.5s 0.05s ease both",
+            }}>
+              <span style={{ fontSize: "18px", marginTop: "1px" }}>⚠</span>
+              <div>
+                <div style={{
+                  fontFamily: "'Fraunces', serif",
+                  fontSize: "14px", fontWeight: 600,
+                  color: "#F59E0B",
+                }}>Professional tier required</div>
+                <div style={{ fontSize: "14px", color: "rgba(245,158,11,0.6)", marginTop: "2px" }}>
+                  Context-Mapper AI generation requires the Professional plan ($249/mo).{" "}
+                  <a href="/billing" style={{ color: "#F59E0B", textDecoration: "underline" }}>Upgrade →</a>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">
-              {error}
             </div>
           )}
 
-          <button
-            onClick={handleGenerate}
-            disabled={generating || !isProfessional}
-            className="w-full text-white font-medium py-3 rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ background: generating ? "var(--indigo-hover)" : "var(--indigo)" }}
-          >
-            {generating ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Generating with Context-Mapper…
-              </>
-            ) : (
-              "✦ Generate Proposal"
-            )}
-          </button>
-        </div>
+          {/* Cold start indicator */}
+          {isProfessional && coldStartPct !== null && coldStartPct < 100 && (
+            <div style={{
+              padding: "16px 20px", borderRadius: "12px",
+              background: "rgba(245,158,11,0.04)",
+              border: "1px solid rgba(245,158,11,0.08)",
+              marginBottom: "20px",
+              animation: "propReveal 0.5s 0.05s ease both",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{
+                  fontFamily: "'Fraunces', serif",
+                  fontSize: "13px", fontWeight: 500,
+                  color: "#F59E0B",
+                }}>
+                  Context-Mapper warming up — {proposalsIndexed}/{COLD_START_THRESHOLD} proposals indexed
+                </span>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "12px", color: "rgba(245,158,11,0.5)",
+                }}>{Math.round(coldStartPct)}%</span>
+              </div>
+              <div style={{
+                height: "3px", borderRadius: "2px",
+                background: "rgba(255,255,255,0.04)",
+                overflow: "hidden",
+              }}>
+                <div style={{
+                  height: "100%", borderRadius: "2px",
+                  width: `${coldStartPct}%`,
+                  background: "linear-gradient(90deg, #B45309, #F59E0B)",
+                  transition: "width 0.5s ease",
+                }} />
+              </div>
+              <p style={{ fontSize: "13px", color: "rgba(245,158,11,0.4)", marginTop: "8px", fontStyle: "italic" }}>
+                Upload {COLD_START_THRESHOLD - (proposalsIndexed ?? 0)} more past proposals to unlock full personalization.{" "}
+                <Link href="/onboarding" style={{ color: "#F59E0B", textDecoration: "underline" }}>Upload now →</Link>
+              </p>
+            </div>
+          )}
 
-        {/* Output panel */}
-        {result && (
-          <div className="bg-white border rounded-2xl p-6 space-y-4 shadow-sm fade-up" style={{ borderColor: "var(--vellum-border)" }}>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <h2 className="font-bold" style={{ fontFamily: "Fraunces, Georgia, serif" }}>
-                Generated Proposal {clientName ? `for ${clientName}` : ""}
-              </h2>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={toggleSectionMode}
-                  className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors border ${
-                    sectionMode
-                      ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  {sectionMode ? "✎ Editing sections" : "✎ Edit sections"}
-                </button>
-                <button
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  className="flex items-center gap-1.5 text-white text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                  style={{ background: "var(--indigo)" }}
-                >
-                  {downloading ? "Downloading…" : "⬇ Download .docx"}
-                </button>
-                <Link
-                  href="/dashboard"
-                  className="flex items-center gap-1.5 border text-sm px-4 py-2 rounded-lg hover:bg-gray-50"
-                  style={{ borderColor: "var(--vellum-border)", color: "var(--ink-secondary)" }}
-                >
-                  View in Dashboard →
-                </Link>
+          {/* Input panel */}
+          <div style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "18px",
+            padding: "32px",
+            marginBottom: "24px",
+            animation: "propReveal 0.5s 0.1s ease both",
+          }}>
+            {/* Client name + Deal value row */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "14px", marginBottom: "18px" }}>
+              <div>
+                <label style={{
+                  display: "block",
+                  fontFamily: "'Fraunces', serif",
+                  fontSize: "13px", fontWeight: 500,
+                  color: "rgba(245,240,232,0.5)",
+                  marginBottom: "6px",
+                }}>
+                  Client name <span style={{ fontWeight: 300, fontStyle: "italic", color: "rgba(245,240,232,0.2)" }}>(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="e.g. Brightfield Technologies"
+                  className="prop-input"
+                />
+              </div>
+              <div>
+                <label style={{
+                  display: "block",
+                  fontFamily: "'Fraunces', serif",
+                  fontSize: "13px", fontWeight: 500,
+                  color: "rgba(245,240,232,0.5)",
+                  marginBottom: "6px",
+                }}>
+                  Deal value <span style={{ fontWeight: 300, fontStyle: "italic", color: "rgba(245,240,232,0.2)" }}>(USD)</span>
+                </label>
+                <div style={{ position: "relative" }}>
+                  <span style={{
+                    position: "absolute", left: "16px", top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "rgba(245,240,232,0.2)",
+                    fontFamily: "'JetBrains Mono', monospace", fontSize: "14px",
+                  }}>$</span>
+                  <input
+                    type="number"
+                    value={valueUsd}
+                    onChange={(e) => setValueUsd(e.target.value)}
+                    placeholder="12500"
+                    className="prop-input"
+                    style={{ paddingLeft: "32px", fontFamily: "'JetBrains Mono', monospace", fontSize: "14px" }}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Section editing mode */}
-            {sectionMode ? (
-              <div className="space-y-3">
-                {sections.map((section, idx) => (
-                  <div
-                    key={idx}
-                    className={`border rounded-xl overflow-hidden ${
-                      editingSection === idx ? "border-indigo-400" : "border-gray-200"
-                    }`}
-                  >
+            {/* RFP textarea */}
+            <div style={{ marginBottom: "18px" }}>
+              <label style={{
+                display: "block",
+                fontFamily: "'Fraunces', serif",
+                fontSize: "13px", fontWeight: 500,
+                color: "rgba(245,240,232,0.5)",
+                marginBottom: "6px",
+              }}>
+                RFP / Brief <span style={{ color: "#F59E0B" }}>*</span>
+              </label>
+              <textarea
+                value={rfpText}
+                onChange={(e) => setRfpText(e.target.value)}
+                rows={8}
+                placeholder="Paste the client's RFP, project brief, or describe what they need…"
+                className="prop-input prop-textarea"
+              />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "8px" }}>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "11px",
+                  color: rfpText.length >= 50 ? "rgba(245,240,232,0.2)" : "rgba(245,158,11,0.4)",
+                }}>
+                  {rfpText.length} chars (min 50)
+                </span>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  {EXAMPLE_RFPS.map((ex, i) => (
                     <button
-                      onClick={() => setEditingSection(editingSection === idx ? null : idx)}
-                      className="w-full px-4 py-3 text-left flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                      key={i}
+                      onClick={() => setRfpText(ex)}
+                      style={{
+                        background: "none", border: "none",
+                        fontSize: "12px", color: "#F59E0B",
+                        cursor: "pointer", textDecoration: "underline",
+                        fontFamily: "'Crimson Pro', serif",
+                        fontStyle: "italic",
+                        opacity: 0.6,
+                        transition: "opacity 0.2s",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = "1"}
+                      onMouseLeave={e => e.currentTarget.style.opacity = "0.6"}
                     >
-                      <span className="font-semibold text-sm" style={{ color: "var(--ink-primary)" }}>
-                        {section.heading || "Introduction"}
-                      </span>
-                      <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
-                        {editingSection === idx ? "▲ Collapse" : "▼ Edit"}
-                      </span>
+                      Example {i + 1}
                     </button>
-                    {editingSection === idx && (
-                      <textarea
-                        value={section.body}
-                        onChange={(e) => updateSection(idx, e.target.value)}
-                        rows={8}
-                        className="w-full px-4 py-3 text-sm border-t border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none font-mono"
-                        style={{ color: "var(--ink-secondary)" }}
-                      />
-                    )}
-                    {editingSection !== idx && (
-                      <div className="px-4 py-3 text-xs line-clamp-2 font-mono" style={{ color: "var(--ink-muted)" }}>
-                        {section.body.slice(0, 120)}…
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => {
-                      if (result) {
-                        setResult({ ...result, content: reassembleContent() });
-                      }
-                      setSectionMode(false);
-                    }}
-                    className="text-sm text-white px-4 py-2 rounded-lg"
-                    style={{ background: "var(--indigo)" }}
-                  >
-                    Save edits
-                  </button>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <div className="rounded-xl p-4 max-h-[500px] overflow-y-auto" style={{ background: "var(--vellum)" }}>
-                <div className="prose prose-sm prose-gray max-w-none leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
-                  <ReactMarkdown>{result.content}</ReactMarkdown>
-                </div>
+            </div>
+
+            {error && (
+              <div style={{
+                background: "rgba(220,38,38,0.06)",
+                border: "1px solid rgba(220,38,38,0.12)",
+                borderRadius: "8px",
+                padding: "12px 16px",
+                fontSize: "14px", color: "#F87171",
+                marginBottom: "16px",
+                fontStyle: "italic",
+              }}>
+                {error}
               </div>
             )}
 
-            {/* Star rating widget */}
-            <div className="pt-3 border-t border-gray-100">
-              <p className="text-sm font-medium mb-2" style={{ color: "var(--ink-secondary)" }}>How good was this proposal?</p>
-              {ratingSubmitted ? (
-                <div className="flex items-center gap-2 text-sm text-green-600">
-                  <span>✓</span>
-                  <span>Thanks — your rating helps improve future proposals.</span>
+            <button
+              onClick={handleGenerate}
+              disabled={generating || !isProfessional}
+              style={{
+                width: "100%",
+                padding: "16px 24px",
+                borderRadius: "12px",
+                border: "none",
+                background: generating
+                  ? "linear-gradient(135deg, #92400E, #B45309)"
+                  : "linear-gradient(135deg, #B45309, #F59E0B)",
+                color: "#FEF3C7",
+                fontFamily: "'Fraunces', serif",
+                fontSize: "16px", fontWeight: 600,
+                cursor: generating || !isProfessional ? "not-allowed" : "pointer",
+                opacity: !isProfessional ? 0.4 : 1,
+                transition: "all 0.25s",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
+              }}
+              onMouseEnter={e => { if (!generating && isProfessional) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 10px 32px rgba(245,158,11,0.2)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              {generating ? (
+                <>
+                  <span style={{
+                    width: "16px", height: "16px",
+                    border: "2px solid rgba(254,243,199,0.3)",
+                    borderTopColor: "#FEF3C7",
+                    borderRadius: "50%",
+                    animation: "propSpin 0.6s linear infinite",
+                  }} />
+                  Generating with Context-Mapper…
+                </>
+              ) : (
+                "✦ Generate Proposal"
+              )}
+            </button>
+          </div>
+
+          {/* Output panel */}
+          {result && (
+            <div style={{
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "18px",
+              padding: "32px",
+              animation: "propReveal 0.4s ease both",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "24px" }}>
+                <h2 style={{
+                  fontFamily: "'Fraunces', serif",
+                  fontSize: "20px", fontWeight: 600,
+                  color: "#F5F0E8",
+                  margin: 0,
+                }}>
+                  Generated Proposal {clientName ? <span style={{ fontStyle: "italic", fontWeight: 400 }}>for {clientName}</span> : ""}
+                </h2>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button
+                    onClick={toggleSectionMode}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: "8px",
+                      border: `1.5px solid ${sectionMode ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.08)"}`,
+                      background: sectionMode ? "rgba(245,158,11,0.06)" : "rgba(255,255,255,0.02)",
+                      color: sectionMode ? "#F59E0B" : "rgba(245,240,232,0.4)",
+                      fontSize: "13px", cursor: "pointer",
+                      fontFamily: "'Crimson Pro', serif",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    {sectionMode ? "✎ Editing" : "✎ Edit sections"}
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: "rgba(245,158,11,0.12)",
+                      color: "#F59E0B",
+                      fontSize: "13px", cursor: "pointer",
+                      fontFamily: "'Crimson Pro', serif",
+                      opacity: downloading ? 0.5 : 1,
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(245,158,11,0.18)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "rgba(245,158,11,0.12)"}
+                  >
+                    {downloading ? "Downloading…" : "⬇ Download .docx"}
+                  </button>
+                  <Link
+                    href="/dashboard"
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: "8px",
+                      border: "1.5px solid rgba(255,255,255,0.06)",
+                      background: "transparent",
+                      color: "rgba(245,240,232,0.35)",
+                      fontSize: "13px",
+                      textDecoration: "none",
+                      fontFamily: "'Crimson Pro', serif",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "rgba(245,240,232,0.6)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(245,240,232,0.35)"; }}
+                  >
+                    View in Dashboard →
+                  </Link>
+                </div>
+              </div>
+
+              {/* Section editing OR rendered content */}
+              {sectionMode ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {sections.map((section, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        borderRadius: "10px",
+                        overflow: "hidden",
+                        border: `1.5px solid ${editingSection === idx ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.06)"}`,
+                      }}
+                    >
+                      <button
+                        onClick={() => setEditingSection(editingSection === idx ? null : idx)}
+                        style={{
+                          width: "100%",
+                          padding: "12px 16px",
+                          textAlign: "left",
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          background: editingSection === idx ? "rgba(245,158,11,0.04)" : "rgba(255,255,255,0.02)",
+                          border: "none",
+                          cursor: "pointer",
+                          transition: "background 0.2s",
+                        }}
+                        onMouseEnter={e => { if (editingSection !== idx) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                        onMouseLeave={e => { if (editingSection !== idx) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
+                      >
+                        <span style={{
+                          fontFamily: "'Fraunces', serif",
+                          fontSize: "14px", fontWeight: 500,
+                          color: "#F5F0E8",
+                        }}>
+                          {section.heading || "Introduction"}
+                        </span>
+                        <span style={{ fontSize: "11px", color: "rgba(245,240,232,0.2)" }}>
+                          {editingSection === idx ? "▲ Collapse" : "▼ Edit"}
+                        </span>
+                      </button>
+                      {editingSection === idx && (
+                        <textarea
+                          value={section.body}
+                          onChange={(e) => updateSection(idx, e.target.value)}
+                          rows={8}
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            borderTop: "1px solid rgba(255,255,255,0.06)",
+                            background: "rgba(255,255,255,0.01)",
+                            color: "#F5F0E8",
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "13px",
+                            border: "none",
+                            borderTopStyle: "solid",
+                            borderTopWidth: "1px",
+                            borderTopColor: "rgba(255,255,255,0.06)",
+                            resize: "none",
+                            outline: "none",
+                            lineHeight: 1.7,
+                          }}
+                        />
+                      )}
+                      {editingSection !== idx && (
+                        <div style={{
+                          padding: "10px 16px",
+                          fontSize: "12px",
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: "rgba(245,240,232,0.15)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {section.body.slice(0, 120)}…
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+                    <button
+                      onClick={() => {
+                        if (result) {
+                          setResult({ ...result, content: reassembleContent() });
+                        }
+                        setSectionMode(false);
+                      }}
+                      style={{
+                        padding: "10px 20px",
+                        borderRadius: "8px",
+                        border: "none",
+                        background: "#F59E0B",
+                        color: "#13110E",
+                        fontFamily: "'Fraunces', serif",
+                        fontSize: "13px", fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
+                    >
+                      Save edits
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
-                  <StarRating value={starRating} onChange={handleStarChange} />
-                  {ratingLoading && (
-                    <span className="text-xs animate-pulse" style={{ color: "var(--ink-muted)" }}>Saving…</span>
-                  )}
+                <div style={{
+                  borderRadius: "12px",
+                  padding: "24px",
+                  maxHeight: "500px",
+                  overflowY: "auto",
+                  background: "rgba(245,240,232,0.02)",
+                  border: "1px solid rgba(255,255,255,0.04)",
+                }}>
+                  <div style={{
+                    fontFamily: "'Crimson Pro', serif",
+                    fontSize: "15px",
+                    color: "rgba(245,240,232,0.6)",
+                    lineHeight: 1.85,
+                  }}>
+                    <ReactMarkdown>{result.content}</ReactMarkdown>
+                  </div>
                 </div>
               )}
-            </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono" style={{ color: "var(--ink-muted)" }}>
-              <span className="w-2 h-2 rounded-full" style={{ background: "var(--indigo)" }} />
-              Generated with Claude Sonnet 4.6 + your Context-Mapper · ID: {result.proposal_id.slice(0, 8)}
+              {/* Rating */}
+              <div style={{
+                paddingTop: "18px",
+                marginTop: "18px",
+                borderTop: "1px solid rgba(255,255,255,0.04)",
+              }}>
+                <p style={{
+                  fontFamily: "'Fraunces', serif",
+                  fontSize: "14px", fontWeight: 500,
+                  color: "rgba(245,240,232,0.4)",
+                  marginBottom: "10px",
+                }}>How good was this proposal?</p>
+                {ratingSubmitted ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#34D399" }}>
+                    <span>✓</span>
+                    <span style={{ fontStyle: "italic" }}>Thanks — your rating helps improve future proposals.</span>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <StarRating value={starRating} onChange={handleStarChange} />
+                    {ratingLoading && (
+                      <span style={{ fontSize: "12px", color: "rgba(245,240,232,0.2)", animation: "propPulse 1s ease-in-out infinite" }}>Saving…</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer ID */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: "8px",
+                marginTop: "16px",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "11px",
+                color: "rgba(245,240,232,0.12)",
+              }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#F59E0B" }} />
+                Generated with Claude Sonnet 4.6 + Context-Mapper · ID: {result.proposal_id.slice(0, 8)}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

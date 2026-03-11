@@ -52,6 +52,24 @@ export default function OutreachPage() {
     setTimeout(() => setCopied(null), 2000);
   }
 
+  function handleExportCsv() {
+    if (!sequence) return;
+    const header = "send_day,subject,body,cta";
+    const rows = sequence.map((email, i) => {
+      const day = email.send_day ?? (i + 1);
+      const escapeCsv = (s: string) => `"${s.replace(/"/g, '""')}"`;
+      return `${day},${escapeCsv(email.subject)},${escapeCsv(email.body)},${escapeCsv(email.cta ?? "")}`;
+    });
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `outreach_sequence_${form.company.replace(/\s+/g, "_").toLowerCase() || "export"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="min-h-screen" style={{ background: "var(--vellum)" }}>
       <AppNav />
@@ -128,9 +146,18 @@ export default function OutreachPage() {
         <div className="flex-1 fade-up-1">
           {sequence ? (
             <div className="space-y-4">
-              <h2 className="text-lg font-bold" style={{ fontFamily: "Fraunces, Georgia, serif" }}>
-                Generated Sequence
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold" style={{ fontFamily: "Fraunces, Georgia, serif" }}>
+                  Generated Sequence
+                </h2>
+                <button
+                  onClick={handleExportCsv}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-gray-50 flex items-center gap-1.5"
+                  style={{ borderColor: "var(--vellum-border)", color: "var(--indigo)" }}
+                >
+                  ↓ Export CSV
+                </button>
+              </div>
               {sequence.map((email, i) => (
                 <div key={i} className="bg-white border rounded-xl p-5 shadow-sm card-hover" style={{ borderColor: "var(--vellum-border)" }}>
                   <div className="flex justify-between items-center mb-3">

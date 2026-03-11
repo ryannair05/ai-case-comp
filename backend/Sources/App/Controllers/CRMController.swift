@@ -19,14 +19,16 @@ struct CRMController {
     @Sendable
     func hubspotConnect(_ req: Request) async throws -> Response {
         let customer = try await req.authenticatedCustomer()
-        let state = customer.id!.uuidString
+        // Encode after_auth context into state so callback knows where to redirect
+        let afterAuth = req.query[String.self, at: "after_auth"] ?? ""
+        let state = afterAuth.isEmpty ? customer.id!.uuidString : "\(customer.id!.uuidString)|\(afterAuth)"
         let scopes = "crm.objects.deals.write%20crm.objects.contacts.read"
         let url =
             "https://app.hubspot.com/oauth/authorize"
             + "?client_id=\(hubspotClientId)"
             + "&redirect_uri=\(redirectURI.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? redirectURI)"
             + "&scope=\(scopes)"
-            + "&state=\(state)"
+            + "&state=\(state.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? state)"
         return req.redirect(to: url)
     }
 
@@ -34,13 +36,20 @@ struct CRMController {
 
     @Sendable
     func hubspotCallback(_ req: Request) async throws -> Response {
-        // Extract customer ID from the OAuth state parameter
-        guard let stateParam = req.query[String.self, at: "state"],
-            let customerId = UUID(uuidString: stateParam),
+        // Extract customer ID and optional after_auth from the OAuth state parameter
+        guard let stateParam = req.query[String.self, at: "state"] else {
+            throw Abort(.badRequest, reason: "Invalid or missing state parameter")
+        }
+
+        // State format: "customerId" or "customerId|afterAuth"
+        let stateParts = stateParam.split(separator: "|", maxSplits: 1).map(String.init)
+        guard let customerId = UUID(uuidString: stateParts[0]),
             let customer = try await Customer.find(customerId, on: req.db)
         else {
             throw Abort(.badRequest, reason: "Invalid or missing state parameter")
         }
+        let afterAuth = stateParts.count > 1 ? stateParts[1] : ""
+
         guard let code = req.query[String.self, at: "code"] else {
             throw Abort(.badRequest, reason: "Missing authorization code")
         }
@@ -69,7 +78,9 @@ struct CRMController {
         customer.hubspotToken = accessToken
         try await customer.save(on: req.db)
 
-        return req.redirect(to: "/dashboard?crm=connected")
+        // Redirect based on after_auth context
+        let redirectPath = afterAuth == "onboarding" ? "/onboarding?crm=connected" : "/dashboard?crm=connected"
+        return req.redirect(to: redirectPath)
     }
 
     // MARK: - HubSpot status

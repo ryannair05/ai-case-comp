@@ -240,6 +240,61 @@ struct ProposalController {
                 }
             }
         }
+
+        // Auto CRM sync — push deal to HubSpot and/or Pipedrive on outcome change
+        if let outcome = body.outcome, (outcome == "won" || outcome == "lost") {
+            let clientName = proposal.clientName ?? ""
+            let valueUsd = proposal.valueUsd
+            let propId = proposal.id!.uuidString
+
+            // HubSpot sync
+            if customer.hubspotConnected, let token = customer.hubspotToken {
+                Task.detached {
+                    let dealStage = outcome == "won" ? "closedwon" : outcome == "lost" ? "closedlost" : "contractsent"
+                    let dealURL = URL(string: "https://api.hubapi.com/crm/v3/objects/deals")!
+                    var dealReq = URLRequest(url: dealURL)
+                    dealReq.httpMethod = "POST"
+                    dealReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    dealReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    let dealBody: [String: Any] = [
+                        "properties": [
+                            "dealname": "\(clientName) — Draftly Proposal",
+                            "amount": valueUsd.map { "\($0)" } ?? "0",
+                            "dealstage": dealStage,
+                            "pipeline": "default",
+                            "draftly_proposal_id": propId,
+                        ]
+                    ]
+                    dealReq.httpBody = try? JSONSerialization.data(withJSONObject: dealBody)
+                    _ = try? await URLSession.shared.data(for: dealReq)
+                }
+            }
+
+            // Pipedrive sync
+            if let apiKey = customer.pipedriveApiKey, !apiKey.isEmpty {
+                Task.detached {
+                    let status: String
+                    switch outcome {
+                    case "won":  status = "won"
+                    case "lost": status = "lost"
+                    default:     status = "open"
+                    }
+                    let baseURL = "https://api.pipedrive.com/v1"
+                    let dealURL = URL(string: "\(baseURL)/deals?api_token=\(apiKey)")!
+                    var dealReq = URLRequest(url: dealURL)
+                    dealReq.httpMethod = "POST"
+                    dealReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    var dealBody: [String: Any] = [
+                        "title": "\(clientName) — Draftly Proposal",
+                        "status": status,
+                    ]
+                    if let v = valueUsd { dealBody["value"] = v }
+                    dealReq.httpBody = try? JSONSerialization.data(withJSONObject: dealBody)
+                    _ = try? await URLSession.shared.data(for: dealReq)
+                }
+            }
+        }
+
         return proposal
     }
 

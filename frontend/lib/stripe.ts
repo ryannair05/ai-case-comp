@@ -1,6 +1,8 @@
 import Stripe from "stripe";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// Use a placeholder key during build/SSR — Stripe SDK requires a key at init
+// but actual API calls only happen at runtime when real key is present.
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder");
 
 export const PRICE_IDS = {
   starter: process.env.STRIPE_PRICE_STARTER!,         // $99/mo

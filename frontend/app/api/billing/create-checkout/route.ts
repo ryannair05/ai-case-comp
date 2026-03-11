@@ -8,7 +8,8 @@ const TIER_MAP: Record<string, keyof typeof PRICE_IDS> = {
 };
 
 export async function POST(req: NextRequest) {
-  const { tier } = await req.json();
+  const body = await req.json();
+  const { tier, email: customerEmail } = body as { tier: string; email?: string };
 
   const priceKey = TIER_MAP[tier];
   if (!priceKey || !PRICE_IDS[priceKey]) {
@@ -17,13 +18,17 @@ export async function POST(req: NextRequest) {
 
   const origin = req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const success_url = `${origin}/billing?success=true`;
-  const cancel_url  = `${origin}/billing?canceled=true`;
+  const cancel_url = `${origin}/billing?canceled=true`;
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: PRICE_IDS[priceKey], quantity: 1 }],
     success_url,
     cancel_url,
+    metadata: {
+      customer_email: customerEmail ?? "",
+      tier,
+    },
   });
 
   return Response.json({ url: session.url });

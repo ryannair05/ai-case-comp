@@ -29,6 +29,58 @@ const SAMPLE_RFPS = [
 
 const LIONTOWN_DEMO_CUSTOMER_ID = "0d1a3e07-5d4a-5f7d-8be7-255a1109bce0";
 
+// ─── Fallback fixtures (used when backend is unreachable) ─────────────────────
+
+const FALLBACK_GENERIC = `## Proposal for Go-to-Market Strategy
+
+Dear Hiring Manager,
+
+Thank you for the opportunity to submit this proposal. We are a full-service marketing agency with extensive experience helping B2B companies grow.
+
+### Our Approach
+- **Brand Positioning**: We will conduct market research and develop a comprehensive brand strategy.
+- **Content Marketing**: Our team will create blog posts, whitepapers, and social media content.
+- **Paid Media**: We will manage paid campaigns across Google Ads and LinkedIn.
+- **Lead Generation**: Using inbound and outbound strategies, we will build your pipeline.
+
+### Pricing
+Our standard engagement starts at a competitive rate. We offer flexible packages tailored to your needs.
+
+### Timeline
+We can begin within two weeks of engagement and deliver initial results within 60 days.
+
+We look forward to discussing this further.
+
+Best regards,
+Generic Agency`;
+
+const FALLBACK_DRAFTLY = `## LionTown Marketing — Proposal for Meridian Analytics
+
+**Prepared by LionTown Marketing** | Win Rate: 73% | 847 proposals indexed
+
+### Executive Summary
+Meridian Analytics needs a partner who understands the B2B SaaS buyer journey — not just the funnel. LionTown has launched 23 SaaS products in the last 18 months with an average 73% win rate across competitive RFPs.
+
+### Why LionTown
+- **Proven SaaS Expertise**: Our Brightfield case study delivered 312% ROI in 90 days
+- **Data-Driven Positioning**: We use brand_strategy frameworks validated across $8,500 avg deal sizes
+- **Pricing Intelligence**: Based on 847 indexed proposals, we recommend a $4,500/mo retainer with performance bonuses
+
+### Proposed Approach
+1. **Discovery Sprint** (Weeks 1–2): Stakeholder interviews, competitive social_media_audit, ICP validation
+2. **Brand Launch** (Weeks 3–6): Positioning, messaging matrix, content calendar
+3. **Demand Engine** (Weeks 7–12): Paid media activation, ABM sequences, measurable pipeline targets
+
+### Investment
+- Monthly retainer: $4,500/mo (6-month minimum)
+- Performance bonus: 10% of pipeline generated above $100K/quarter
+- Estimated first-quarter ROI: 280% based on comparable B2B SaaS engagements
+
+### Results you can measure
+Every dollar is accountable. We provide weekly dashboards, monthly business reviews, and quarterly ROI audits.
+
+*"We don't do marketing. We build revenue engines."* — LionTown Marketing`;
+
 // ─── Feature cards data ─────────────────────────────────────────────────────
 
 const FEATURES = [
@@ -83,8 +135,9 @@ async function streamGenericGPT(
     body: JSON.stringify({ rfp_text: rfp }),
     signal,
   });
+  if (!res.ok) throw new Error(`Generic API returned ${res.status}`);
   const reader = res.body?.getReader();
-  if (!reader) return;
+  if (!reader) throw new Error("No response body");
   const decoder = new TextDecoder();
   while (true) {
     const { done, value } = await reader.read();
@@ -104,8 +157,9 @@ async function streamDraftly(
     body: JSON.stringify({ rfp_text: rfp, customer_id: LIONTOWN_DEMO_CUSTOMER_ID }),
     signal,
   });
+  if (!res.ok) throw new Error(`Draftly API returned ${res.status}`);
   const reader = res.body?.getReader();
-  if (!reader) return;
+  if (!reader) throw new Error("No response body");
   const decoder = new TextDecoder();
   while (true) {
     const { done, value } = await reader.read();
@@ -177,6 +231,8 @@ export default function DemoPage() {
   const [activeTab, setActiveTab] = useState<"demo" | "features" | "architecture">("demo");
   const [genericWordCount, setGenericWordCount] = useState(0);
   const [draftlyWordCount, setDraftlyWordCount] = useState(0);
+  const [genericFallback, setGenericFallback] = useState(false);
+  const [draftlyFallback, setDraftlyFallback] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const genericRef = useRef<HTMLDivElement>(null);
@@ -219,18 +275,40 @@ export default function DemoPage() {
     setDraftlyStream("");
     setGenericWordCount(0);
     setDraftlyWordCount(0);
+    setGenericFallback(false);
+    setDraftlyFallback(false);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Run both streams independently so one failing doesn't block the other
+    const genericPromise = streamGenericGPT(
+      rfpText,
+      (c) => setGenericStream((p) => p + c),
+      controller.signal
+    ).catch((err) => {
+      if (err?.name === "AbortError") return;
+      console.error("Generic stream failed, using fallback:", err);
+      setGenericFallback(true);
+      setGenericStream(FALLBACK_GENERIC);
+    });
+
+    const draftlyPromise = streamDraftly(
+      rfpText,
+      (c) => setDraftlyStream((p) => p + c),
+      controller.signal
+    ).catch((err) => {
+      if (err?.name === "AbortError") return;
+      console.error("Draftly stream failed, using fallback:", err);
+      setDraftlyFallback(true);
+      setDraftlyStream(FALLBACK_DRAFTLY);
+    });
+
     try {
-      await Promise.all([
-        streamGenericGPT(rfpText, (c) => setGenericStream((p) => p + c), controller.signal),
-        streamDraftly(rfpText, (c) => setDraftlyStream((p) => p + c), controller.signal),
-      ]);
+      await Promise.all([genericPromise, draftlyPromise]);
       setDone(true);
     } catch {
-      // aborted or error — silently stop
+      // aborted — silently stop
     } finally {
       setRunning(false);
     }
@@ -601,9 +679,14 @@ export default function DemoPage() {
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "15px", fontWeight: 600, color: "var(--coral)" }}>Generic GPT-4o</span>
-                      {running && (
+                      {running && !genericFallback && (
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--coral)", opacity: 0.7 }}>
                           ● streaming
+                        </span>
+                      )}
+                      {genericFallback && (
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", background: "rgba(249,112,102,0.1)", color: "var(--coral)", padding: "2px 8px", borderRadius: "10px" }}>
+                          cached demo
                         </span>
                       )}
                     </div>
@@ -671,9 +754,14 @@ export default function DemoPage() {
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "15px", fontWeight: 600, color: "var(--indigo)" }}>Draftly + Context-Mapper</span>
-                      {running && (
+                      {running && !draftlyFallback && (
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--indigo)", opacity: 0.7 }}>
                           ● streaming
+                        </span>
+                      )}
+                      {draftlyFallback && (
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", background: "rgba(99,102,241,0.1)", color: "var(--indigo)", padding: "2px 8px", borderRadius: "10px" }}>
+                          cached demo
                         </span>
                       )}
                     </div>

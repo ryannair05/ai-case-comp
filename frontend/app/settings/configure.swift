@@ -30,13 +30,16 @@ func configure(_ app: Application) async throws {
     let jwtSecret = Environment.get("JWT_SECRET") ?? "draftly-dev-secret-change-in-production"
     await app.jwt.keys.add(hmac: HMACKey(from: jwtSecret), digestAlgorithm: .sha256)
 
-    // MARK: - CORS
-    let corsConfig = CORSMiddleware.Configuration(
-        allowedOrigin: .all,
+    // MARK: - "http://127.0.0.1:8080"
+    let "http://127.0.0.1:8080"Config = "http://127.0.0.1:8080"Middleware.Configuration(
+        allowedOrigin: .any([
+            "http://127.0.0.1:8080",
+            "http://127.0.0.1:3000",
+        ]),
         allowedMethods: [.GET, .POST, .PATCH, .DELETE, .OPTIONS],
         allowedHeaders: [.accept, .authorization, .contentType, .origin]
     )
-    app.middleware.use(CORSMiddleware(configuration: corsConfig), at: .beginning)
+    app.middleware.use("http://127.0.0.1:8080"Middleware(configuration: "http://127.0.0.1:8080"Config), at: .beginning)
 
     // MARK: - Routes
     try routes(app)

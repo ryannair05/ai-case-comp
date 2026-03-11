@@ -6,7 +6,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "placeholder" });
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const DEMO_JWT_TOKEN = process.env.DEMO_JWT_TOKEN ?? "";
 
