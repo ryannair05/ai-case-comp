@@ -125,7 +125,7 @@ const FEATURES = [
 
 // ─── Streaming helpers ───────────────────────────────────────────────────────
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 async function streamGenericGPT(
   rfp: string,
@@ -499,9 +499,9 @@ export default function DemoPage() {
         <header className="demo-fade-up" style={{
           borderBottom: "1px solid var(--vellum-border)",
           padding: "14px 32px",
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
-          justifyContent: "space-between",
           position: "sticky",
           top: 0,
           zIndex: 50,
@@ -519,7 +519,7 @@ export default function DemoPage() {
           </div>
 
           {/* Tabs */}
-          <nav style={{ display: "flex", gap: "28px" }}>
+          <nav style={{ display: "flex", gap: "28px", justifyContent: "center" }}>
             {(["demo", "features", "architecture"] as const).map((tab) => (
               <button
                 key={tab}
@@ -545,15 +545,17 @@ export default function DemoPage() {
           </nav>
 
           {/* LionTown badge */}
-          <div className="demo-intel-badge">
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--indigo)", display: "inline-block" }} />
-            LionTown Marketing · 847 proposals
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <div className="demo-intel-badge">
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--indigo)", display: "inline-block" }} />
+              LionTown Marketing · 847 proposals
+            </div>
           </div>
         </header>
 
         {/* ── DEMO TAB ────────────────────────────────────────────────────── */}
         {activeTab === "demo" && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 32px", gap: "20px" }}>
+          <div style={{ display: "flex", flexDirection: "column", padding: "24px 32px", gap: "20px" }}>
 
             {/* RFP selector + edit */}
             <div className="demo-fade-up-1" style={{ display: "flex", alignItems: "flex-start", gap: "24px", flexWrap: "wrap" }}>
@@ -584,7 +586,6 @@ export default function DemoPage() {
                         boxShadow: selectedRfp === i && !isEditingRfp ? "0 4px 12px rgba(99,102,241,0.15)" : "none",
                       }}
                     >
-                      <span style={{ fontSize: "18px" }}>{r.icon}</span>
                       {r.label}
                     </button>
                   ))}
@@ -602,7 +603,7 @@ export default function DemoPage() {
                       borderRadius: "30px",
                     }}
                   >
-                    ✎ Custom RFP
+                    ✎   Custom RFP
                   </button>
                 </div>
               </div>
@@ -645,7 +646,7 @@ export default function DemoPage() {
                 boxShadow: "var(--card-shadow)",
               }}>
                 <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--ink-secondary)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-                  {rfpText.slice(0, 200)}{rfpText.length > 200 ? "…" : ""}
+                  {rfpText}
                 </p>
               </div>
             )}
@@ -832,59 +833,16 @@ export default function DemoPage() {
                   </button>
                 )}
               </div>
-              <p style={{ fontFamily: "'JetBrains Mono', monospace", textAlign: "center", fontSize: "10.5px", color: "var(--ink-muted)", lineHeight: 1.7, marginBottom: "24px" }}>
+              <p style={{ fontFamily: "'JetBrains Mono', monospace", textAlign: "center", fontSize: "10.5px", color: "var(--ink-muted)", lineHeight: 1.7, marginBottom: "0" }}>
                 &ldquo;OpenAI will never fine-tune on LionTown&apos;s 847 proposals, $4,500 retainer anchor, or 73% Brightfield win rate. Draftly will.&rdquo;
               </p>
-
-              {/* Ready to try CTA */}
-              <div style={{
-                background: "linear-gradient(135deg, rgba(99,102,241,0.05), rgba(99,102,241,0.1))",
-                border: "1px solid rgba(99,102,241,0.2)",
-                borderRadius: "16px",
-                padding: "32px",
-                textAlign: "center",
-                marginTop: "12px",
-              }}>
-                <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "24px", fontWeight: 700, marginBottom: "8px", color: "var(--ink-primary)" }}>
-                  Ready to try it yourself?
-                </h3>
-                <p style={{ color: "var(--ink-secondary)", fontSize: "14px", marginBottom: "20px" }}>
-                  Join 200+ firms using Draftly to win more deals with less work.
-                </p>
-                <a
-                  href="/signup"
-                  style={{
-                    display: "inline-block",
-                    padding: "12px 32px",
-                    background: "var(--indigo)",
-                    color: "white",
-                    borderRadius: "8px",
-                    fontFamily: "'Outfit', sans-serif",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    transition: "transform 0.15s, box-shadow 0.15s",
-                    boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(99,102,241,0.4)";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(99,102,241,0.3)";
-                  }}
-                >
-                  Create Your Free Account →
-                </a>
-              </div>
             </div>
           </div>
         )}
 
         {/* ── FEATURES TAB ─────────────────────────────────────────────────── */}
         {activeTab === "features" && (
-          <div style={{ flex: 1, padding: "48px 32px", maxWidth: "960px", margin: "0 auto", width: "100%" }}>
+          <div style={{ padding: "48px 32px 16px 32px", maxWidth: "960px", margin: "0 auto", width: "100%" }}>
 
             <div className="demo-fade-up" style={{ marginBottom: "48px" }}>
               <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "42px", fontWeight: 700, lineHeight: 1.1, letterSpacing: "-1px", marginBottom: "12px", color: "var(--ink-primary)" }}>
@@ -991,7 +949,7 @@ export default function DemoPage() {
 
         {/* ── ARCHITECTURE TAB ─────────────────────────────────────────────── */}
         {activeTab === "architecture" && (
-          <div style={{ flex: 1, padding: "48px 32px", maxWidth: "960px", margin: "0 auto", width: "100%" }}>
+          <div style={{ padding: "48px 32px 16px 32px", maxWidth: "960px", margin: "0 auto", width: "100%" }}>
 
             <div className="demo-fade-up" style={{ marginBottom: "48px" }}>
               <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "42px", fontWeight: 700, lineHeight: 1.1, letterSpacing: "-1px", marginBottom: "12px", color: "var(--ink-primary)" }}>
@@ -1006,15 +964,14 @@ export default function DemoPage() {
             {/* Stack diagram */}
             <div className="demo-fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "40px" }}>
               {[
-                { layer: "Frontend", tech: "Next.js 15", note: "Tailwind CSS 3.4 + Framer Motion" }, // 15 is actual
-                { layer: "Backend", tech: "Swift Vapor 4.10", note: "SQLite via Fluent ORM" },
-                { layer: "Vectors", tech: "Local BLOB store", note: "1024-dim · cosine similarity" },
+                { layer: "Frontend", tech: "Next.js 16.1", note: "React 19 + Tailwind CSS 4.2" },
+                { layer: "Backend", tech: "Swift Vapor 4", note: "PostgreSQL via Fluent" },
+                { layer: "Local Storage", tech: "Local BLOB store", note: "1024-dim · cosine similarity" },
                 { layer: "Generation", tech: "Claude 4.5 Haiku", note: "Anthropic — primary proposal engine" },
                 { layer: "Embeddings", tech: "OpenAI text-embedding-3-small", note: "text-embedding-3-small (1536-dim)" },
-                { layer: "Cache", tech: "Upstash Redis", note: "72-hr LLM response hedge" },
+                { layer: "Hosting", tech: "DigitalOcean", note: "App Platform" },
                 { layer: "Auth", tech: "JWT HS256", note: "Vapor/jwt-kit" },
-                { layer: "Payments", tech: "Stripe", note: "Checkout Sessions + Portal" },
-                { layer: "CRM", tech: "HubSpot", note: "OAuth 2.0 Integration" },
+                { layer: "Payments", tech: "Stripe", note: "Checkout Sessions + Portal" }
               ].map((item) => (
                 <div key={item.layer} className="demo-arch-node">
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "var(--indigo)", textTransform: "uppercase" as const, marginBottom: "4px" }}>
@@ -1036,7 +993,7 @@ export default function DemoPage() {
                   ["Customer isolation", "Every SQL and vector query filters customer_id. Zero cross-customer data leakage."],
                   ["Claude for generation only", "OpenAI handles embeddings. Claude handles generation. Never swapped."],
                   ["Async file processing", "All ingest runs in Task.detached. HTTP response never blocked."],
-                  ["72-hr Redis cache", "All LLM responses cached. AI provider outage = zero customer impact."],
+                  ["DigitalOcean Hosted", "Running securely on DigitalOcean App Platform. Predictable performance."],
                   ["30-day soft-delete", "GDPR-compliant export window before hard deletion."],
                 ].map(([rule, desc], i) => (
                   <div key={i} style={{
@@ -1067,24 +1024,30 @@ export default function DemoPage() {
                 overflow: "hidden",
                 boxShadow: "var(--card-shadow)",
               }}>
-                {[
-                  ["POST", "/auth/register", "Create customer + JWT"],
-                  ["POST", "/proposals/generate", "RAG + Claude (Professional+)"],
-                  ["GET", "/proposals/:id/export-docx", "Download .docx"],
-                  ["POST", "/ingest/proposal-file", "Async PDF/DOCX embed"],
-                  ["POST", "/ingest/pricing-csv", "Async CSV pricing embed"],
-                  ["POST", "/gtm/meeting-signals", "Extract deal signals (GTM tier)"],
-                  ["GET", "/export/full", "ZIP GDPR data export"],
-                  ["POST", "/crm/pipedrive/sync-deal", "Sync proposal → Pipedrive deal"],
-                ].map(([method, path, note], i) => (
-                  <div key={i} style={{
-                    display: "grid",
-                    gridTemplateColumns: "56px 260px 1fr",
-                    gap: "16px",
-                    padding: "12px 18px",
-                    borderBottom: i < 7 ? "1px solid var(--vellum-border)" : "none",
-                    alignItems: "center",
-                  }}>
+                {(() => {
+                  const endpoints = [
+                    ["POST", "https://api.draftly.biz/auth/register", "Create customer + JWT"],
+                    ["POST", "https://api.draftly.biz/proposals/generate", "RAG + Claude (Professional+)"],
+                    ["GET", "https://api.draftly.biz/proposals/:id/export-docx", "Download .docx"],
+                    ["POST", "https://api.draftly.biz/ingest/proposal-file", "Async PDF/DOCX embed"],
+                    ["POST", "https://api.draftly.biz/ingest/pricing-csv", "Async CSV pricing embed"],
+                    ["GET", "https://api.draftly.biz/context-mapper/switching-cost", "Moat Meter & lock-in analysis"],
+                    ["POST", "https://api.draftly.biz/demo/draftly", "Streaming context generation"],
+                    ["POST", "https://api.draftly.biz/gtm/outreach-sequence", "GTM Agent personalized sequences"],
+                    ["POST", "https://api.draftly.biz/crm/hubspot/log-deal", "Bidirectional pipeline logging"],
+                    ["GET", "https://api.draftly.biz/analytics/unit-economics", "ROI & phase-gate tracking"],
+                    ["POST", "https://api.draftly.biz/churn/detect", "Churn signal identification"],
+                    ["GET", "https://api.draftly.biz/export/full", "ZIP GDPR data export"],
+                  ];
+                  return endpoints.map(([method, path, note], i) => (
+                    <div key={i} style={{
+                      display: "grid",
+                      gridTemplateColumns: "56px max-content 1fr",
+                      gap: "16px",
+                      padding: "12px 18px",
+                      borderBottom: i < endpoints.length - 1 ? "1px solid var(--vellum-border)" : "none",
+                      alignItems: "center",
+                    }}>
                     <span style={{
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: "10px",
@@ -1097,11 +1060,50 @@ export default function DemoPage() {
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--ink-primary)" }}>{path}</span>
                     <span style={{ fontSize: "12px", color: "var(--ink-muted)", fontFamily: "'DM Sans', sans-serif" }}>{note}</span>
                   </div>
-                ))}
+                ))})()}
               </div>
             </div>
           </div>
         )}
+
+        {/* ── Global CTA ─────────────────────────────────────────────────── */}
+        <div style={{
+          padding: "8px 32px 32px 32px",
+          textAlign: "center",
+        }}>
+          <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "24px", fontWeight: 700, marginBottom: "8px", color: "var(--ink-primary)" }}>
+            Ready to try it yourself?
+          </h3>
+          <p style={{ color: "var(--ink-secondary)", fontSize: "14px", marginBottom: "20px" }}>
+            Join 200+ firms using Draftly to win more deals with less work.
+          </p>
+          <a
+            href="/signup"
+            style={{
+              display: "inline-block",
+              padding: "12px 32px",
+              background: "var(--indigo)",
+              color: "white",
+              borderRadius: "8px",
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: "14px",
+              fontWeight: 600,
+              textDecoration: "none",
+              transition: "transform 0.15s, box-shadow 0.15s",
+              boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 6px 16px rgba(99,102,241,0.4)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(99,102,241,0.3)";
+            }}
+          >
+            Create Your Free Account →
+          </a>
+        </div>
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <footer style={{
@@ -1110,6 +1112,8 @@ export default function DemoPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          background: "var(--card-bg)",
+          marginTop: "auto"
         }}>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--ink-muted)" }}>
             Draftly © 2026 · Demo Mode

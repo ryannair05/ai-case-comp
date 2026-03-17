@@ -2,6 +2,10 @@ import Fluent
 import Foundation
 import Vapor
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 /// Churn detection — highest-ROI build in Phase 1.
 /// At $2,800 LTV per customer, stopping churn is the biggest lever.
 struct ChurnController {

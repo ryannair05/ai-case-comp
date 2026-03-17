@@ -1,6 +1,10 @@
-import Vapor
 import Fluent
 import Foundation
+import Vapor
+
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
 
 /// GTM Sales Agent — Phase 2 endpoints.
 /// Logic already existed in ClaudeService; this router exposes it.
@@ -13,7 +17,7 @@ struct GTMController {
         let rawNotes: String
         let clientName: String
         enum CodingKeys: String, CodingKey {
-            case rawNotes   = "raw_notes"
+            case rawNotes = "raw_notes"
             case clientName = "client_name"
         }
     }
@@ -55,13 +59,16 @@ struct GTMController {
                 let dealBody: [String: Any] = [
                     "properties": [
                         "dealname": "\(body.clientName) — GTM Signal",
-                        "dealstage": dealSignal.stage == "closed_won" ? "closedwon"
-                            : dealSignal.stage == "closed_lost" ? "closedlost"
-                            : "appointmentscheduled",
+                        "dealstage": dealSignal.stage == "closed_won"
+                            ? "closedwon"
+                            : dealSignal.stage == "closed_lost"
+                                ? "closedlost"
+                                : "appointmentscheduled",
                         "pipeline": "default",
                     ]
                 ]
-                var hubReq = URLRequest(url: URL(string: "https://api.hubapi.com/crm/v3/objects/deals")!)
+                var hubReq = URLRequest(
+                    url: URL(string: "https://api.hubapi.com/crm/v3/objects/deals")!)
                 hubReq.httpMethod = "POST"
                 hubReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 hubReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -73,7 +80,9 @@ struct GTMController {
                     "title": "\(body.clientName) — GTM Signal",
                     "stage_id": 1,
                 ]
-                var req2 = URLRequest(url: URL(string: "https://api.pipedrive.com/v1/deals?api_token=\(pipedriveKey)")!)
+                var req2 = URLRequest(
+                    url: URL(
+                        string: "https://api.pipedrive.com/v1/deals?api_token=\(pipedriveKey)")!)
                 req2.httpMethod = "POST"
                 req2.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 req2.httpBody = try? JSONSerialization.data(withJSONObject: pipeReq)
@@ -126,17 +135,20 @@ struct GTMController {
     func updateDealStage(_ req: Request) async throws -> Response {
         let customer = try await req.authenticatedCustomer()
         let signalId = try req.parameters.require("id", as: UUID.self)
-        guard let signal = try await DealSignal.query(on: req.db)
-            .filter(\.$customerId == customer.id!)
-            .filter(\.$id == signalId)
-            .first()
+        guard
+            let signal = try await DealSignal.query(on: req.db)
+                .filter(\.$customerId == customer.id!)
+                .filter(\.$id == signalId)
+                .first()
         else {
             throw Abort(.notFound, reason: "Deal signal not found")
         }
         let body = try req.content.decode(UpdateStageRequest.self)
         let validStages = ["discovery", "proposal", "negotiation", "closed_won", "closed_lost"]
         guard validStages.contains(body.stage) else {
-            throw Abort(.badRequest, reason: "Invalid stage. Must be one of: \(validStages.joined(separator: ", "))")
+            throw Abort(
+                .badRequest,
+                reason: "Invalid stage. Must be one of: \(validStages.joined(separator: ", "))")
         }
         signal.stage = body.stage
         try await signal.save(on: req.db)
@@ -146,12 +158,15 @@ struct GTMController {
             if customer.hubspotConnected, let token = customer.hubspotToken {
                 let dealBody: [String: Any] = [
                     "properties": [
-                        "dealstage": body.stage == "closed_won" ? "closedwon"
-                            : body.stage == "closed_lost" ? "closedlost"
-                            : "appointmentscheduled",
+                        "dealstage": body.stage == "closed_won"
+                            ? "closedwon"
+                            : body.stage == "closed_lost"
+                                ? "closedlost"
+                                : "appointmentscheduled"
                     ]
                 ]
-                var hubReq = URLRequest(url: URL(string: "https://api.hubapi.com/crm/v3/objects/deals")!)
+                var hubReq = URLRequest(
+                    url: URL(string: "https://api.hubapi.com/crm/v3/objects/deals")!)
                 hubReq.httpMethod = "POST"
                 hubReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 hubReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -177,11 +192,11 @@ struct GTMController {
         let painPoint: String
         let sequenceLength: Int?
         enum CodingKeys: String, CodingKey {
-            case prospectName     = "prospect_name"
-            case prospectCompany  = "prospect_company"
+            case prospectName = "prospect_name"
+            case prospectCompany = "prospect_company"
             case prospectIndustry = "prospect_industry"
-            case painPoint        = "pain_point"
-            case sequenceLength   = "sequence_length"
+            case painPoint = "pain_point"
+            case sequenceLength = "sequence_length"
         }
     }
 
@@ -207,10 +222,10 @@ struct GTMController {
         )
 
         let prospect: [String: Any] = [
-            "prospect_name":     body.prospectName,
-            "prospect_company":  body.prospectCompany,
+            "prospect_name": body.prospectName,
+            "prospect_company": body.prospectCompany,
             "prospect_industry": body.prospectIndustry,
-            "pain_point":        body.painPoint,
+            "pain_point": body.painPoint,
         ]
 
         let sequence = try await ClaudeService.shared.generateOutreachSequence(
@@ -223,7 +238,8 @@ struct GTMController {
         // AI disclosure footer (ethics requirement)
         let withDisclosure = sequence.map { email -> [String: Any] in
             var e = email
-            let body = (e["body"] as? String ?? "")
+            let body =
+                (e["body"] as? String ?? "")
                 + "\n\n---\nThis email was drafted with AI assistance by Draftly."
             e["body"] = body
             return e

@@ -316,30 +316,13 @@ struct ClaudeService {
 
                 do {
                     req.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    let (result, response) = try await URLSession.shared.bytes(for: req)
-
-                    guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                        throw ClaudeError.apiError(
-                            "HTTP \( (response as? HTTPURLResponse)?.statusCode ?? 0 )")
+                    let delegate = ClaudeStreamDelegate(continuation: continuation)
+                    let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+                    let task = session.dataTask(with: req)
+                    continuation.onTermination = { @Sendable _ in
+                        task.cancel()
                     }
-
-                    for try await line in result.lines {
-                        guard line.hasPrefix("data: ") else { continue }
-                        let jsonString = String(line.dropFirst(6))
-                        guard jsonString != "[DONE]" else { break }
-
-                        if let data = jsonString.data(using: .utf8),
-                            let json = try? JSONSerialization.jsonObject(with: data)
-                                as? [String: Any],
-                            let type = json["type"] as? String,
-                            type == "content_block_delta",
-                            let delta = json["delta"] as? [String: Any],
-                            let text = delta["text"] as? String
-                        {
-                            continuation.yield(text)
-                        }
-                    }
-                    continuation.finish()
+                    task.resume()
                 } catch {
                     continuation.finish(throwing: error)
                 }
@@ -366,5 +349,58 @@ struct ClaudeService {
     enum ClaudeError: Error {
         case apiError(String)
         case parseError
+    }
+}
+
+private final class ClaudeStreamDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    let continuation: AsyncThrowingStream<String, any Error>.Continuation
+    var buffer: String = ""
+    
+    init(continuation: AsyncThrowingStream<String, any Error>.Continuation) {
+        self.continuation = continuation
+    }
+    
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            continuation.finish(throwing: ClaudeService.ClaudeError.apiError("HTTP \(http.statusCode)"))
+            completionHandler(.cancel)
+            return
+        }
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard let str = String(data: data, encoding: .utf8) else { return }
+        buffer += str
+        var lines = buffer.components(separatedBy: .newlines)
+        guard !lines.isEmpty else { return }
+        buffer = lines.removeLast()
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("data: ") else { continue }
+            let jsonString = String(trimmed.dropFirst(6)).trimmingCharacters(in: .whitespaces)
+            guard jsonString != "[DONE]" else {
+                continuation.finish()
+                return
+            }
+            if let data = jsonString.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let type = json["type"] as? String,
+               type == "content_block_delta",
+               let delta = json["delta"] as? [String: Any],
+               let text = delta["text"] as? String
+            {
+                continuation.yield(text)
+            }
+        }
+    }
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+        if let error = error {
+            continuation.finish(throwing: error)
+        } else {
+            continuation.finish()
+        }
     }
 }

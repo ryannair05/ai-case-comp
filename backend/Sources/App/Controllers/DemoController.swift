@@ -67,48 +67,10 @@ struct DemoController {
         response.headers.add(name: "Connection", value: "keep-alive")
 
         response.body = .init(stream: { writer in
-            Task { [request] in
-                do {
-                    let (stream, urlResponse) = try await URLSession.shared.bytes(for: request)
-                    guard let httpRes = urlResponse as? HTTPURLResponse,
-                        (200...299).contains(httpRes.statusCode)
-                    else {
-                        _ = writer.write(
-                            .buffer(
-                                ByteBuffer(
-                                    string:
-                                        "Error from OpenAI API: \( (urlResponse as? HTTPURLResponse)?.statusCode ?? 0 )"
-                                )))
-                        _ = writer.write(.end)
-                        return
-                    }
-
-                    for try await line in stream.lines {
-                        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard trimmed.hasPrefix("data: ") else { continue }
-                        let jsonStr = String(trimmed.dropFirst(6))
-                        guard jsonStr != "[DONE]" else { break }
-
-                        if let data = jsonStr.data(using: .utf8),
-                            let json = try? JSONSerialization.jsonObject(with: data)
-                                as? [String: Any],
-                            let choices = json["choices"] as? [[String: Any]],
-                            let firstChoice = choices.first,
-                            let delta = firstChoice["delta"] as? [String: Any],
-                            let content = delta["content"] as? String
-                        {
-                            _ = writer.write(.buffer(ByteBuffer(string: content)))
-                        }
-                    }
-                    _ = writer.write(.end)
-                } catch {
-                    req.logger.error("OpenAI stream error: \(error)")
-                    _ = writer.write(
-                        .buffer(
-                            ByteBuffer(string: "\n[Stream Error: \(error.localizedDescription)]")))
-                    _ = writer.write(.end)
-                }
-            }
+            let delegate = OpenAIStreamDelegate(writer: writer)
+            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            let task = session.dataTask(with: request)
+            task.resume()
         })
         return response
     }
@@ -156,5 +118,69 @@ struct DemoController {
             }
         })
         return response
+    }
+}
+
+private final class OpenAIStreamDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    let writer: any BodyStreamWriter
+    var buffer: String = ""
+    var isDone = false
+    
+    init(writer: any BodyStreamWriter) {
+        self.writer = writer
+    }
+    
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        if let httpRes = response as? HTTPURLResponse, !(200...299).contains(httpRes.statusCode) {
+             _ = writer.write(.buffer(ByteBuffer(string: "Error from OpenAI API: \(httpRes.statusCode)")))
+             _ = writer.write(.end)
+             isDone = true
+             completionHandler(.cancel)
+             return
+        }
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard !isDone, let str = String(data: data, encoding: .utf8) else { return }
+        buffer += str
+        var lines = buffer.components(separatedBy: .newlines)
+        guard !lines.isEmpty else { return }
+        buffer = lines.removeLast()
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.hasPrefix("data: ") else { continue }
+            let jsonStr = String(trimmed.dropFirst(6))
+            guard jsonStr != "[DONE]" else {
+                _ = writer.write(.end)
+                isDone = true
+                return
+            }
+            if let data = jsonStr.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let choices = json["choices"] as? [[String: Any]],
+               let firstChoice = choices.first,
+               let delta = firstChoice["delta"] as? [String: Any],
+               let content = delta["content"] as? String {
+                   _ = writer.write(.buffer(ByteBuffer(string: content)))
+            }
+        }
+    }
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+        guard !isDone else { return }
+        isDone = true
+        if let error = error {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
+                _ = writer.write(.end)
+            } else {
+                _ = writer.write(.buffer(ByteBuffer(string: "\n[Stream Error: \(error.localizedDescription)]")))
+                _ = writer.write(.end)
+            }
+        } else {
+            _ = writer.write(.end)
+        }
     }
 }

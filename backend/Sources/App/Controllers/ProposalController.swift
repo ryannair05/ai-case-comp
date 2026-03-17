@@ -1,6 +1,10 @@
 import Fluent
 import Vapor
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 /// Proposal CRUD, AI generation, DOCX export, and win/loss tracking.
 struct ProposalController {
 
@@ -242,7 +246,7 @@ struct ProposalController {
         }
 
         // Auto CRM sync — push deal to HubSpot and/or Pipedrive on outcome change
-        if let outcome = body.outcome, (outcome == "won" || outcome == "lost") {
+        if let outcome = body.outcome, outcome == "won" || outcome == "lost" {
             let clientName = proposal.clientName ?? ""
             let valueUsd = proposal.valueUsd
             let propId = proposal.id!.uuidString
@@ -250,7 +254,9 @@ struct ProposalController {
             // HubSpot sync
             if customer.hubspotConnected, let token = customer.hubspotToken {
                 Task.detached {
-                    let dealStage = outcome == "won" ? "closedwon" : outcome == "lost" ? "closedlost" : "contractsent"
+                    let dealStage =
+                        outcome == "won"
+                        ? "closedwon" : outcome == "lost" ? "closedlost" : "contractsent"
                     let dealURL = URL(string: "https://api.hubapi.com/crm/v3/objects/deals")!
                     var dealReq = URLRequest(url: dealURL)
                     dealReq.httpMethod = "POST"
@@ -275,9 +281,9 @@ struct ProposalController {
                 Task.detached {
                     let status: String
                     switch outcome {
-                    case "won":  status = "won"
+                    case "won": status = "won"
                     case "lost": status = "lost"
-                    default:     status = "open"
+                    default: status = "open"
                     }
                     let baseURL = "https://api.pipedrive.com/v1"
                     let dealURL = URL(string: "\(baseURL)/deals?api_token=\(apiKey)")!
