@@ -919,7 +919,7 @@ function OnboardingInner() {
                     position: "absolute", inset: 0,
                     background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%)",
                     backgroundSize: "200% auto",
-                    animation: "shimmerCta 3s linear infinite",
+                    animation: "shimmerCta 3s linear 2s 2",
                   }} />
                   <span style={{ position: "relative" }}>
                     {isLastStep ? "Complete Setup →" : "Continue →"}

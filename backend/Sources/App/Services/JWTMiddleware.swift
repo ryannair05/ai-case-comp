@@ -5,7 +5,15 @@ import JWT
 /// Injects the authenticated customer payload into the request storage.
 struct JWTMiddleware: AsyncMiddleware {
     func respond(to request: Request, chainingTo next: any AsyncResponder) async throws -> Response {
-        guard let token = request.headers.bearerAuthorization?.token else {
+        
+        let token: String
+        if let bearer = request.headers.bearerAuthorization {
+            token = bearer.token
+        } else if let queryToken = request.query[String.self, at: "token"] {
+            token = queryToken
+        } else if let cookieToken = request.cookies["draftly_token"]?.string {
+            token = cookieToken
+        } else {
             throw Abort(.unauthorized, reason: "Missing Bearer token")
         }
         do {

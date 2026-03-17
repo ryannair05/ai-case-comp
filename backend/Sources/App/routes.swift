@@ -89,4 +89,7 @@ func routes(_ app: Application) throws {
     protected.post("crm", "pipedrive", "save-key", use: pipedriveCtrl.saveApiKey)
     protected.post("crm", "pipedrive", "sync-deal", use: pipedriveCtrl.syncDeal)
     protected.get("crm", "pipedrive", "status", use: pipedriveCtrl.status)
+
+    // Billing
+    try app.register(collection: BillingController())
 }

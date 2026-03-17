@@ -20,8 +20,8 @@ const PLANS = [
     period: "/mo",
     description: "Perfect for independent consultants",
     features: ["Up to 15 proposals/mo", "Standard templates", "DOCX export", "Basic analytics"],
-    cta: "Current Plan",
-    ctaAction: null as string | null,
+    cta: "Select Starter",
+    ctaAction: "Starter",
     highlight: false,
   },
   {
@@ -95,12 +95,28 @@ function BillingInner() {
       const res = await fetch("/api/billing/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier }),
+        body: JSON.stringify({ tier, email: user?.email }),
       });
       const { url } = await res.json() as { url: string };
       window.location.href = url;
     } catch (err) {
       console.error("Checkout error:", err);
+      setLoading(false);
+    }
+  };
+
+  const handleManage = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/billing/create-portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user?.email }),
+      });
+      const { url } = await res.json() as { url: string };
+      window.location.href = url;
+    } catch (err) {
+      console.error("Portal error:", err);
       setLoading(false);
     }
   };
@@ -202,32 +218,22 @@ function BillingInner() {
               </div>
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
-              <button style={{
-                padding: "8px 16px",
-                borderRadius: "8px",
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.03)",
-                color: "rgba(226,232,240,0.6)",
-                fontSize: "13px", cursor: "pointer",
-                transition: "all 0.2s",
-              }}
+              <button 
+                onClick={handleManage}
+                disabled={loading}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.03)",
+                  color: "rgba(226,232,240,0.6)",
+                  fontSize: "13px", cursor: loading ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                }}
                 onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
                 onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
               >
-                Manage via Stripe
-              </button>
-              <button
-                onClick={signOut}
-                style={{
-                  padding: "8px 16px", background: "none",
-                  border: "none", color: "rgba(148,163,184,0.3)",
-                  fontSize: "13px", cursor: "pointer",
-                  transition: "color 0.2s",
-                }}
-                onMouseEnter={e => e.currentTarget.style.color = "rgba(248,113,113,0.7)"}
-                onMouseLeave={e => e.currentTarget.style.color = "rgba(148,163,184,0.3)"}
-              >
-                Sign out
+                {loading ? "Redirecting..." : "Manage via Stripe"}
               </button>
             </div>
           </div>
@@ -359,24 +365,10 @@ function BillingInner() {
                     >
                       Current Plan
                     </button>
-                  ) : isDowngrade ? (
-                    <button
-                      disabled
-                      style={{
-                        width: "100%", padding: "12px",
-                        borderRadius: "10px",
-                        border: "none",
-                        background: "rgba(255,255,255,0.03)",
-                        color: "rgba(148,163,184,0.3)",
-                        fontSize: "13px", cursor: "default",
-                      }}
-                    >
-                      Downgrade — contact support
-                    </button>
                   ) : (
                     <button
                       onClick={() => plan.ctaAction && handleUpgrade(plan.ctaAction)}
-                      disabled={loading || !isUpgrade}
+                      disabled={loading}
                       style={{
                         width: "100%", padding: "12px",
                         borderRadius: "10px",
