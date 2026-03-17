@@ -10,9 +10,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
+    "@tailwindcss/typography": "^0.5.19",
     "next": "^16.1.6",
-    "openai": "^6.27.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-dropzone": "^15.0.0",

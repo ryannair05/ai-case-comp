@@ -172,9 +172,28 @@ function OnboardingInner() {
     const file = files[0];
     if (!file) return;
     setUploading(true);
+    const fileEntry: UploadedFile = { name: file.name, status: "uploading" };
+    setUploadedFiles((prev) => [...prev, fileEntry]);
+
     try {
-      await ingestApi.uploadPricingCsv(file);
-    } catch (e) { console.error(e); }
+      const result = await ingestApi.uploadPricingCsv(file);
+      const jobId = result?.job_id;
+      if (jobId) {
+        setUploadedFiles((prev) =>
+          prev.map((f) => (f.name === file.name && f.status === "uploading" ? { ...f, status: "processing" as FileStatus, jobId } : f))
+        );
+        startPolling(jobId, file.name);
+      } else {
+        setUploadedFiles((prev) =>
+          prev.map((f) => (f.name === file.name && f.status === "uploading" ? { ...f, status: "indexed" as FileStatus } : f))
+        );
+      }
+    } catch (e) {
+      console.error(e);
+      setUploadedFiles((prev) =>
+        prev.map((f) => (f.name === file.name && f.status === "uploading" ? { ...f, status: "failed" as FileStatus } : f))
+      );
+    }
     setUploading(false);
   }, []);
 
@@ -638,6 +657,59 @@ function OnboardingInner() {
                       or click to browse
                     </p>
                   </div>
+
+                  {/* Pricing status list */}
+                  {uploadedFiles.filter(f => f.name.endsWith(".csv")).length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {uploadedFiles.filter(f => f.name.endsWith(".csv")).map((file, i) => (
+                        <div
+                          key={`${file.name}-${i}`}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "10px",
+                            fontSize: "13px",
+                            padding: "12px 16px",
+                            borderRadius: "12px",
+                            background: "rgba(255,255,255,0.03)",
+                            border: "1px solid rgba(255,255,255,0.06)",
+                          }}
+                        >
+                          <div style={{
+                            width: "24px", height: "24px", borderRadius: "6px",
+                            background: "rgba(255,255,255,0.04)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: "12px", fontWeight: 700,
+                            color: statusColor(file.status),
+                          }}>
+                            {statusIcon(file.status)}
+                          </div>
+                          <span style={{ flex: 1, color: "rgba(226,232,240,0.8)", fontWeight: 500 }}>{file.name}</span>
+                          <span style={{ fontSize: "11px", color: statusColor(file.status), fontWeight: 600, textTransform: "uppercase" }}>
+                            {file.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {uploadedFiles.some(f => f.name.endsWith(".csv") && f.status === "indexed") && !uploading && (
+                    <button
+                      onClick={advanceStep}
+                      style={{
+                        width: "100%", padding: "14px 24px",
+                        border: "none", borderRadius: "12px",
+                        fontFamily: "'Outfit', sans-serif",
+                        fontSize: "14px", fontWeight: 600,
+                        color: "#fff", cursor: "pointer",
+                        background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+                        transition: "all 0.2s",
+                        boxShadow: "0 4px 12px rgba(99,102,241,0.2)",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(99,102,241,0.3)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                    >
+                      Pricing Loaded. Continue →
+                    </button>
+                  )}
                 </div>
               )}
 

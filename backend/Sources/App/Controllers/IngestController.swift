@@ -22,10 +22,24 @@ struct IngestController {
     @Sendable
     func pricingCsv(_ req: Request) async throws -> IngestJobResponse {
         let customer = try await req.authenticatedCustomer()
-        guard let file = req.body.data else {
-            throw Abort(.badRequest, reason: "No file body provided")
+        
+        do {
+            let body = try req.content.decode(ProposalFileRequest.self)
+            if let fd = body.file {
+                return try await processCsvData(fd, customer: customer, req: req)
+            }
+        } catch {}
+        
+        // Fallback to raw body data
+        guard let rawData = req.body.data else {
+            throw Abort(.badRequest, reason: "No file provided")
         }
-        let csvString = String(buffer: file)
+        let fileData = Data(buffer: rawData)
+        return try await processCsvData(fileData, customer: customer, req: req)
+    }
+
+    private func processCsvData(_ fileData: Data, customer: Customer, req: Request) async throws -> IngestJobResponse {
+        let csvString = String(buffer: ByteBuffer(data: fileData))
         let rows = try parseCSV(csvString)
         guard !rows.isEmpty else {
             throw Abort(.badRequest, reason: "CSV contains no valid rows")

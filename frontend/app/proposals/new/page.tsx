@@ -708,7 +708,7 @@ function NewProposalInner() {
                 color: "rgba(245,240,232,0.12)",
               }}>
                 <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#F59E0B" }} />
-                Generated with Claude Sonnet 4.6 + Context-Mapper · ID: {result.proposal_id.slice(0, 8)}
+                Generated with Claude Haiku 4.5 + Context-Mapper · ID: {result.proposal_id.slice(0, 8)}
               </div>
             </div>
           )}

@@ -30,7 +30,7 @@ func withApp(_ test: (Application) async throws -> Void) async throws {
 func registerTestCustomer(
     app: Application,
     name: String = "Test User",
-    email: String = "test@draftly.ai",
+    email: String = "test@draftly.biz",
     password: String = "testpassword123",
     tier: String = "professional"
 ) async throws -> (token: String, customerId: String) {

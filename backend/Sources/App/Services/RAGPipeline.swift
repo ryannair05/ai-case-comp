@@ -6,10 +6,8 @@ import Foundation
 /// 1. Chunk long documents into overlapping 400-word chunks
 /// 2. Embed and upsert to SQLite vector store (BLOB, SIMD search)
 /// 3. Query-time retrieval with 0.72 cosine similarity threshold
-/// 4. Context-aware proposal generation via Claude Sonnet 4.6
+/// 4. Context-aware proposal generation via Claude Haiku 4.5
 ///
-/// BUG FIX: Cold-start branch now passes `industry` to ColdStart.getContext()
-/// (the old Python backend had an empty context_chunks list on cold-start).
 struct RAGPipeline {
     static let shared = RAGPipeline()
     private init() {}

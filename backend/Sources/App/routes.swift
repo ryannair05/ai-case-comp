@@ -90,6 +90,11 @@ func routes(_ app: Application) throws {
     protected.post("crm", "pipedrive", "sync-deal", use: pipedriveCtrl.syncDeal)
     protected.get("crm", "pipedrive", "status", use: pipedriveCtrl.status)
 
+    // Demo Streaming endpoints
+    let demoCtrl = DemoController()
+    app.post("demo", "generic", use: demoCtrl.generic)
+    app.post("demo", "draftly", use: demoCtrl.draftly)
+
     // Billing
     try app.register(collection: BillingController())
 }

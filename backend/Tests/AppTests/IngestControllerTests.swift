@@ -263,8 +263,8 @@ struct BrandVoiceIngestIntegrationTests {
     @Test("Job status is isolated: another customer cannot see the job")
     func jobStatusIsolated() async throws {
         try await withApp { app in
-            let auth1 = try await registerTestCustomer(app: app, email: "user1@draftly.ai")
-            let auth2 = try await registerTestCustomer(app: app, email: "user2@draftly.ai")
+            let auth1 = try await registerTestCustomer(app: app, email: "user1@draftly.biz")
+            let auth2 = try await registerTestCustomer(app: app, email: "user2@draftly.biz")
 
             // Customer 1 creates a brand voice job
             let body = try JSONSerialization.data(withJSONObject: [

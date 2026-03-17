@@ -10,9 +10,7 @@ struct CRMController {
     private let hubspotClientId = ProcessInfo.processInfo.environment["HUBSPOT_CLIENT_ID"] ?? ""
     private let hubspotClientSecret =
         ProcessInfo.processInfo.environment["HUBSPOT_CLIENT_SECRET"] ?? ""
-    private let redirectURI =
-        ProcessInfo.processInfo.environment["HUBSPOT_REDIRECT_URI"]
-        ?? "https://api.draftly.ai/crm/hubspot/callback"
+    private let redirectURI = ProcessInfo.processInfo.environment["HUBSPOT_REDIRECT_URI"] ?? ""
 
     // MARK: - OAuth initiation
 

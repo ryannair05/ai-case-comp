@@ -28,7 +28,7 @@ API_URL = os.environ.get("NEXT_PUBLIC_API_URL", "http://localhost:8080")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "demo@liontown.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "liontown2025!")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-FROM_EMAIL = "Draftly <roi@draftly.ai>"
+FROM_EMAIL = "Draftly <roi@draftly.biz>"
 
 
 def build_roi_html(name: str, roi: dict) -> str:
@@ -66,7 +66,7 @@ def build_roi_html(name: str, roi: dict) -> str:
     </tr>
   </table>
 
-  <a href="https://app.draftly.ai/dashboard"
+  <a href="https://app.draftly.biz/dashboard"
      style="background:#00BFA5;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin:16px 0;">
     View Dashboard →
   </a>

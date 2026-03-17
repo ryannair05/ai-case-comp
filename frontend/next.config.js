@@ -6,6 +6,10 @@ const nextConfig = {
     "local-origin.dev",
     "*.local-origin.dev"
   ],
+  output: 'export',
+  images: {
+    unoptimized: true,
+  },
   // API proxy to Railway backend (avoids CORS in dev)
   async rewrites() {
     return [

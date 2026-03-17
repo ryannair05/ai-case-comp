@@ -6,6 +6,7 @@
  * Split-screen: Generic GPT vs Draftly Context-Mapper
  */
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 
 // ─── Sample data ────────────────────────────────────────────────────────────
 
@@ -124,12 +125,14 @@ const FEATURES = [
 
 // ─── Streaming helpers ───────────────────────────────────────────────────────
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
 async function streamGenericGPT(
   rfp: string,
   onChunk: (text: string) => void,
   signal: AbortSignal
 ): Promise<void> {
-  const res = await fetch("/api/demo/generic", {
+  const res = await fetch(`${API_URL}/demo/generic`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rfp_text: rfp }),
@@ -151,7 +154,7 @@ async function streamDraftly(
   onChunk: (text: string) => void,
   signal: AbortSignal
 ): Promise<void> {
-  const res = await fetch("/api/demo/draftly", {
+  const res = await fetch(`${API_URL}/demo/draftly`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rfp_text: rfp, customer_id: LIONTOWN_DEMO_CUSTOMER_ID }),
@@ -189,32 +192,23 @@ const DRAFTLY_KEYWORDS = [
 ];
 
 function HighlightedOutput({ text, isTyping }: { text: string; isTyping: boolean }) {
-  const parts = text.split(/(\s+)/);
+  if (!text) return null;
+
   return (
-    <span>
-      {parts.map((part, i) => {
-        const isKeyword = DRAFTLY_KEYWORDS.some((kw) =>
-          part.toLowerCase().includes(kw.toLowerCase())
-        );
-        if (isKeyword) {
-          return (
-            <mark
-              key={i}
-              style={{
-                background: "transparent",
-                color: "var(--indigo)",
-                fontWeight: 600,
-                fontStyle: "normal",
-              }}
-            >
-              {part}
-            </mark>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
-      <TypewriterCursor active={isTyping} />
-    </span>
+    <div className="prose prose-invert max-w-none prose-p:leading-relaxed prose-headings:mb-4 prose-headings:mt-6 first:prose-headings:mt-0 prose-pre:bg-gray-800 prose-pre:p-4 prose-pre:rounded-lg">
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => (
+            <p className="mb-4 last:mb-0 inline-block last:inline">
+              {children}
+              {isTyping && <TypewriterCursor active={true} />}
+            </p>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
   );
 }
 
@@ -577,19 +571,20 @@ export default function DemoPage() {
                       onClick={() => { setSelectedRfp(i); setIsEditingRfp(false); setCustomRfp(""); }}
                       style={{
                         fontFamily: "'Outfit', sans-serif",
-                        fontSize: "12px",
-                        fontWeight: 500,
+                        fontSize: "14px",
+                        fontWeight: 600,
                         background: "var(--card-bg)",
                         border: "1px solid var(--vellum-border)",
                         color: "var(--ink-secondary)",
-                        padding: "7px 16px",
-                        borderRadius: "20px",
+                        padding: "12px 24px",
+                        borderRadius: "30px",
                         display: "flex",
                         alignItems: "center",
-                        gap: "6px",
+                        gap: "10px",
+                        boxShadow: selectedRfp === i && !isEditingRfp ? "0 4px 12px rgba(99,102,241,0.15)" : "none",
                       }}
                     >
-                      <span style={{ opacity: 0.5 }}>{r.icon}</span>
+                      <span style={{ fontSize: "18px" }}>{r.icon}</span>
                       {r.label}
                     </button>
                   ))}
@@ -598,16 +593,16 @@ export default function DemoPage() {
                     onClick={() => setIsEditingRfp(!isEditingRfp)}
                     style={{
                       fontFamily: "'Outfit', sans-serif",
-                      fontSize: "12px",
-                      fontWeight: 500,
+                      fontSize: "14px",
+                      fontWeight: 600,
                       background: "var(--card-bg)",
                       border: "1px solid var(--vellum-border)",
                       color: "var(--ink-secondary)",
-                      padding: "7px 16px",
-                      borderRadius: "20px",
+                      padding: "12px 24px",
+                      borderRadius: "30px",
                     }}
                   >
-                    ✎ Custom
+                    ✎ Custom RFP
                   </button>
                 </div>
               </div>
@@ -678,7 +673,7 @@ export default function DemoPage() {
                 }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "15px", fontWeight: 600, color: "var(--coral)" }}>Generic GPT-4o</span>
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: "15px", fontWeight: 600, color: "var(--coral)" }}>Generic GPT 5</span>
                       {running && !genericFallback && (
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "var(--coral)", opacity: 0.7 }}>
                           ● streaming
@@ -714,10 +709,7 @@ export default function DemoPage() {
                   }}
                 >
                   {genericStream ? (
-                    <span>
-                      {genericStream}
-                      <TypewriterCursor active={running} />
-                    </span>
+                    <HighlightedOutput text={genericStream} isTyping={running} />
                   ) : (
                     <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "var(--ink-muted)", textAlign: "center", lineHeight: 1.8 }}>
@@ -803,7 +795,7 @@ export default function DemoPage() {
             </div>
 
             {/* Bottom bar: run button + quote */}
-            <div className="demo-fade-up-3" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div className="demo-fade-up-3" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
               <div style={{ display: "flex", gap: "10px" }}>
                 <button
                   className="demo-btn-run"
@@ -840,9 +832,52 @@ export default function DemoPage() {
                   </button>
                 )}
               </div>
-              <p style={{ fontFamily: "'JetBrains Mono', monospace", textAlign: "center", fontSize: "10.5px", color: "var(--ink-muted)", lineHeight: 1.7 }}>
+              <p style={{ fontFamily: "'JetBrains Mono', monospace", textAlign: "center", fontSize: "10.5px", color: "var(--ink-muted)", lineHeight: 1.7, marginBottom: "24px" }}>
                 &ldquo;OpenAI will never fine-tune on LionTown&apos;s 847 proposals, $4,500 retainer anchor, or 73% Brightfield win rate. Draftly will.&rdquo;
               </p>
+
+              {/* Ready to try CTA */}
+              <div style={{
+                background: "linear-gradient(135deg, rgba(99,102,241,0.05), rgba(99,102,241,0.1))",
+                border: "1px solid rgba(99,102,241,0.2)",
+                borderRadius: "16px",
+                padding: "32px",
+                textAlign: "center",
+                marginTop: "12px",
+              }}>
+                <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: "24px", fontWeight: 700, marginBottom: "8px", color: "var(--ink-primary)" }}>
+                  Ready to try it yourself?
+                </h3>
+                <p style={{ color: "var(--ink-secondary)", fontSize: "14px", marginBottom: "20px" }}>
+                  Join 200+ firms using Draftly to win more deals with less work.
+                </p>
+                <a
+                  href="/signup"
+                  style={{
+                    display: "inline-block",
+                    padding: "12px 32px",
+                    background: "var(--indigo)",
+                    color: "white",
+                    borderRadius: "8px",
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    transition: "transform 0.15s, box-shadow 0.15s",
+                    boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(99,102,241,0.4)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(99,102,241,0.3)";
+                  }}
+                >
+                  Create Your Free Account →
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -971,15 +1006,15 @@ export default function DemoPage() {
             {/* Stack diagram */}
             <div className="demo-fade-up-1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "40px" }}>
               {[
-                { layer: "Frontend", tech: "Next.js 16", note: "Tailwind CSS 4 + Headless UI" },
-                { layer: "Backend", tech: "Swift Vapor 4", note: "SQLite via Fluent ORM" },
-                { layer: "Vectors", tech: "SIMD BLOB store", note: "1024-dim · cosine similarity" },
-                { layer: "Generation", tech: "Claude Sonnet 4.6", note: "Anthropic — never swapped" },
-                { layer: "Embeddings", tech: "OpenAI ada-3-large", note: "text-embedding-3-large" },
+                { layer: "Frontend", tech: "Next.js 15", note: "Tailwind CSS 3.4 + Framer Motion" }, // 15 is actual
+                { layer: "Backend", tech: "Swift Vapor 4.10", note: "SQLite via Fluent ORM" },
+                { layer: "Vectors", tech: "Local BLOB store", note: "1024-dim · cosine similarity" },
+                { layer: "Generation", tech: "Claude 4.5 Haiku", note: "Anthropic — primary proposal engine" },
+                { layer: "Embeddings", tech: "OpenAI text-embedding-3-small", note: "text-embedding-3-small (1536-dim)" },
                 { layer: "Cache", tech: "Upstash Redis", note: "72-hr LLM response hedge" },
                 { layer: "Auth", tech: "JWT HS256", note: "Vapor/jwt-kit" },
-                { layer: "Payments", tech: "Stripe", note: "Checkout Sessions" },
-                { layer: "CRM", tech: "HubSpot + Pipedrive", note: "OAuth + API key" },
+                { layer: "Payments", tech: "Stripe", note: "Checkout Sessions + Portal" },
+                { layer: "CRM", tech: "HubSpot", note: "OAuth 2.0 Integration" },
               ].map((item) => (
                 <div key={item.layer} className="demo-arch-node">
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "var(--indigo)", textTransform: "uppercase" as const, marginBottom: "4px" }}>

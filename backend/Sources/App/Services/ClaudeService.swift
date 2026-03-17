@@ -5,17 +5,17 @@ import Foundation
     import FoundationNetworking
 #endif
 
-/// Claude Sonnet 4.6 client — PRIMARY LLM for all proposal generation.
+/// Claude Haiku 4.5 client — PRIMARY LLM for all proposal generation.
 ///
 /// RULES:
-/// - Claude Sonnet 4.6 is the ONLY model used for text generation.
+/// - Claude Haiku 4.5 is the ONLY model used for text generation.
 /// - OpenAI GPT models are used ONLY for embeddings (EmbeddingsService).
 /// - All LLM responses are cached in Redis for 72 hrs (AI dependency hedge).
 struct ClaudeService {
     static let shared = ClaudeService()
 
     private let apiKey: String
-    private let model = "claude-sonnet-4-20250514"
+    private let model = "claude-haiku-4-5-20251001"
     private let baseURL = "https://api.anthropic.com/v1/messages"
 
     private init() {
@@ -261,7 +261,7 @@ struct ClaudeService {
         let url = URL(string: baseURL)!
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
-        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "x-api-key")
+        req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
@@ -302,7 +302,7 @@ struct ClaudeService {
                 let url = URL(string: self.baseURL)!
                 var req = URLRequest(url: url)
                 req.httpMethod = "POST"
-                req.setValue("Bearer \(self.apiKey)", forHTTPHeaderField: "x-api-key")
+                req.setValue(self.apiKey, forHTTPHeaderField: "x-api-key")
                 req.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 

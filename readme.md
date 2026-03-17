@@ -6,10 +6,10 @@ Helps small professional services firms generate proposals in minutes using AI. 
 
 | Layer | Tech |
 |---|---|
-| Frontend | Next.js 14, Tailwind CSS, shadcn/ui |
+| Frontend | Next.js 16, Tailwind CSS, shadcn/ui |
 | Backend | Swift Vapor 4, SQLite (Fluent) |
 | Vectors | Local BLOB store (SIMD cosine similarity) |
-| LLM | Claude Sonnet 4.6 |
+| LLM | Claude Haiku 4.5 |
 | Embeddings | OpenAI text-embedding-3-large (1024-dim) |
 | Cache | Upstash Redis (72-hr) |
 | Auth | JWT HS256 |
@@ -19,7 +19,7 @@ Helps small professional services firms generate proposals in minutes using AI. 
 ## Running locally
 
 ```bash
-# 1. Copy env template and fill in API keys
+# 1. Copy env template and fill in API keys for the backend
 cp .env.local.example .env.local
 
 # 2. Backend (Swift Vapor + SQLite — auto-migrates on first run)

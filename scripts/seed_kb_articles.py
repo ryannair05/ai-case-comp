@@ -62,7 +62,7 @@ Tips: Include as much context as possible in the RFP text. The more detail you p
 - Professional ($249/mo): Full Context-Mapper access, win/loss tracking, ROI reports
 - GTM Agent ($399/mo): Everything in Professional plus meeting signal extraction and outreach sequences
 You can upgrade at any time from the Billing page. Downgrades take effect at the next billing cycle.
-For enterprise pricing, contact sales@draftly.ai.""",
+For enterprise pricing, contact sales@draftly.biz.""",
     },
     {
         "title": "Data Export and Privacy (GDPR)",
@@ -72,7 +72,7 @@ For enterprise pricing, contact sales@draftly.ai.""",
 - Data is encrypted at rest and in transit
 - We never use your proposal data to train models for other customers
 - Your Context-Mapper data is isolated in a customer-specific namespace
-For privacy questions, contact privacy@draftly.ai.""",
+For privacy questions, contact privacy@draftly.biz.""",
     },
     {
         "title": "CRM Integration (HubSpot)",
@@ -118,7 +118,7 @@ Tip: Upload your best-performing proposals first to establish the right patterns
 - Hours saved (estimated 4.2 hours per proposal)
 - Wins and revenue attributed
 - Your current Moat Meter status
-To unsubscribe, contact support@draftly.ai or reply to the email.""",
+To unsubscribe, contact support@draftly.biz or reply to the email.""",
     },
 ]
 

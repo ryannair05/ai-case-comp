@@ -9,7 +9,7 @@ Helps small professional services firms generate proposals in minutes. Every pro
 | Frontend | Next.js 14, Tailwind CSS, shadcn/ui |
 | Backend | Swift Vapor 4, SQLite (Fluent) |
 | Vectors | Local BLOB store (SIMD cosine similarity) |
-| LLM | Claude Sonnet 4.6 — generation only |
+| LLM | Claude Haiku 4.5 — generation only |
 | Embeddings | OpenAI text-embedding-3-large (1024-dim) |
 | Cache | Upstash Redis (72-hr LLM hedge) |
 | Auth | JWT (Vapor/jwt-kit, HS256) |

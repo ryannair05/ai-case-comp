@@ -1,6 +1,6 @@
-import Vapor
 import Fluent
 import Foundation
+import Vapor
 
 /// Churn detection — highest-ROI build in Phase 1.
 /// At $2,800 LTV per customer, stopping churn is the biggest lever.
@@ -71,14 +71,15 @@ struct ChurnController {
 
         // Best-effort Resend email (non-blocking)
         if let cust = try? await Customer.find(signal.customerId, on: req.db),
-           let resendKey = ProcessInfo.processInfo.environment["RESEND_API_KEY"],
-           !resendKey.isEmpty
+            let resendKey = ProcessInfo.processInfo.environment["RESEND_API_KEY"],
+            !resendKey.isEmpty
         {
             let emailBody: [String: Any] = [
-                "from": "support@draftly.ai",
+                "from": "support@draftly.biz",
                 "to": [cust.email],
                 "subject": "We noticed you've been away — let's reconnect",
-                "html": "<p>Hi \(cust.name),</p><p>We noticed some inactivity on your Draftly account and wanted to check in. Is there anything we can help with?</p><p>— The Draftly Team</p>"
+                "html":
+                    "<p>Hi \(cust.name),</p><p>We noticed some inactivity on your Draftly account and wanted to check in. Is there anything we can help with?</p><p>— The Draftly Team</p>",
             ]
             Task.detached {
                 var emailReq = URLRequest(url: URL(string: "https://api.resend.com/emails")!)
@@ -126,10 +127,11 @@ func detectChurn(for customer: Customer, db: any Database) async -> ChurnSignal?
 
     // Heuristic 1: no proposals in last 14 days
     let twoWeeksAgo = Date().addingTimeInterval(-14 * 24 * 3600)
-    let recentProposals = (try? await Proposal.query(on: db)
-        .filter(\.$customerId == customerId)
-        .filter(\.$createdAt >= twoWeeksAgo)
-        .count()) ?? 0
+    let recentProposals =
+        (try? await Proposal.query(on: db)
+            .filter(\.$customerId == customerId)
+            .filter(\.$createdAt >= twoWeeksAgo)
+            .count()) ?? 0
 
     if recentProposals == 0 && customer.proposalsIndexed > 0 {
         let signal = ChurnSignal(
@@ -142,15 +144,17 @@ func detectChurn(for customer: Customer, db: any Database) async -> ChurnSignal?
 
     // Heuristic 2: usage dropped significantly vs prior period
     let thirtyDaysAgo = Date().addingTimeInterval(-30 * 24 * 3600)
-    let sixtyDaysAgo  = Date().addingTimeInterval(-60 * 24 * 3600)
+    let sixtyDaysAgo = Date().addingTimeInterval(-60 * 24 * 3600)
 
-    let currentPeriod = (try? await Proposal.query(on: db)
-        .filter(\.$customerId == customerId)
-        .filter(\.$createdAt >= thirtyDaysAgo).count()) ?? 0
-    let priorPeriod = (try? await Proposal.query(on: db)
-        .filter(\.$customerId == customerId)
-        .filter(\.$createdAt >= sixtyDaysAgo)
-        .filter(\.$createdAt < thirtyDaysAgo).count()) ?? 0
+    let currentPeriod =
+        (try? await Proposal.query(on: db)
+            .filter(\.$customerId == customerId)
+            .filter(\.$createdAt >= thirtyDaysAgo).count()) ?? 0
+    let priorPeriod =
+        (try? await Proposal.query(on: db)
+            .filter(\.$customerId == customerId)
+            .filter(\.$createdAt >= sixtyDaysAgo)
+            .filter(\.$createdAt < thirtyDaysAgo).count()) ?? 0
 
     if priorPeriod > 0 {
         let dropPct = Double(priorPeriod - currentPeriod) / Double(priorPeriod) * 100
