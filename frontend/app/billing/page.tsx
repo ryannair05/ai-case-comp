@@ -218,7 +218,7 @@ function BillingInner() {
               </div>
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
-              <button 
+              <button
                 onClick={handleManage}
                 disabled={loading}
                 style={{

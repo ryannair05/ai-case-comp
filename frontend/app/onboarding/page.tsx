@@ -10,7 +10,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { ingestApi, contextMapperApi } from "@/lib/api";
+import { ingestApi, contextMapperApi, crmApi } from "@/lib/api";
 
 const STEPS = [
   { id: 1, title: "Upload Pricing Sheet", desc: "Download our CSV template, fill in your services and prices, upload it back.", icon: "💰" },
@@ -783,9 +783,18 @@ function OnboardingInner() {
 
                   {crmChoice && !crmConnected && (
                     <button
-                      onClick={() => {
-                        const afterAuth = encodeURIComponent("onboarding");
-                        window.location.href = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/crm/${crmChoice}/connect?after_auth=${afterAuth}`;
+                      onClick={async () => {
+                        if (crmChoice === "hubspot") {
+                          try {
+                            const res = await crmApi.hubspotConnect("onboarding");
+                            if (res.url) window.location.href = res.url;
+                          } catch (e) {
+                            console.error("Failed to connect HubSpot", e);
+                          }
+                        } else {
+                          // Pipedrive uses API keys on the settings page
+                          window.location.href = "/settings";
+                        }
                       }}
                       style={{
                         width: "100%", padding: "14px 24px",

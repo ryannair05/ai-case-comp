@@ -311,14 +311,23 @@ export default function SettingsPage() {
                 }}>
                   Connect HubSpot via OAuth to automatically log proposals as CRM deals.
                 </div>
-                <a
-                  href={`${API_BASE}/crm/hubspot/connect`}
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await crmApi.hubspotConnect();
+                      if (res.url) window.location.href = res.url;
+                    } catch (e) {
+                      console.error("Failed to connect HubSpot", e);
+                    }
+                  }}
                   style={{
                     display: "inline-block",
                     padding: "10px 20px",
                     borderRadius: "6px",
                     background: "#FF7A59",
                     color: "#fff",
+                    border: "none",
+                    cursor: "pointer",
                     fontSize: "13px", fontWeight: 600,
                     fontFamily: "'Syne', sans-serif",
                     textDecoration: "none",
@@ -328,7 +337,7 @@ export default function SettingsPage() {
                   onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
                 >
                   Connect HubSpot →
-                </a>
+                </button>
               </div>
             )}
           </section>

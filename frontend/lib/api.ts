@@ -215,6 +215,7 @@ export const pipedriveApi = {
 // ---------------------------------------------------------------------------
 
 export const crmApi = {
+  hubspotConnect: (afterAuth?: string) => apiRequest<{ url: string }>(`/crm/hubspot/connect${afterAuth ? `?after_auth=${afterAuth}` : ""}`),
   hubspotStatus: () => apiRequest<any>("/crm/hubspot/status"),
   hubspotDisconnect: () => apiRequest<any>("/crm/hubspot/disconnect", { method: "POST" }),
 };
