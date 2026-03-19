@@ -27,52 +27,72 @@ struct DemoController {
         guard !body.rfpText.isEmpty else {
             throw Abort(.badRequest, reason: "rfp_text cannot be empty")
         }
-
-        let apiKey = openaiApiKey
-        guard !apiKey.isEmpty else {
+        guard !openaiApiKey.isEmpty else {
             throw Abort(.internalServerError, reason: "Missing OPENAI_API_KEY")
         }
 
-        let systemPrompt =
-            "You are a helpful AI assistant. Generate a professional proposal for the given RFP. Use Markdown for formatting (headers, lists, bold text)."
-
+        let systemPrompt = "You are a helpful AI assistant. Generate a professional proposal for the given RFP. Use Markdown for formatting (headers, lists, bold text)."
+        
         let requestBody: [String: Any] = [
-            "model": "gpt-5-nano",  // Fallback to a fast model if nano is unavailable
+            "model": "gpt-5-nano",
             "max_completion_tokens": 1500,
             "stream": true,
             "messages": [
                 ["role": "system", "content": systemPrompt],
-                [
-                    "role": "user",
-                    "content": "Generate a proposal for this RFP:\n\n\(body.rfpText)",
-                ],
+                ["role": "user", "content": "Generate a proposal for this RFP:\n\n\(body.rfpText)"]
             ],
+            "reasoning_effort":"minimal"
         ]
 
-        guard let requestData = try? JSONSerialization.data(withJSONObject: requestBody) else {
-            throw Abort(.internalServerError, reason: "Failed to serialize request")
-        }
-
-        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
-        var urlReq = URLRequest(url: url)
+        let requestData = try JSONSerialization.data(withJSONObject: requestBody)
+        var urlReq = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
         urlReq.httpMethod = "POST"
-        urlReq.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        urlReq.setValue("Bearer \(openaiApiKey)", forHTTPHeaderField: "Authorization")
         urlReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlReq.httpBody = requestData
 
-        let request = urlReq
+        // Extract stream creation to keep the endpoint clean
+        let stream = streamOpenAICall(urlReq: urlReq)
+
         let response = Response(status: .ok)
-        response.headers.contentType = HTTPMediaType(type: "text", subType: "plain")
-        response.headers.add(name: "Cache-Control", value: "no-cache")
-        response.headers.add(name: "Connection", value: "keep-alive")
+        response.headers.contentType = .plainText
+        response.headers.replaceOrAdd(name: .cacheControl, value: "no-cache")
+        response.headers.replaceOrAdd(name: .connection, value: "keep-alive")
 
         response.body = .init(stream: { writer in
-            let delegate = OpenAIStreamDelegate(writer: writer)
-            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-            let task = session.dataTask(with: request)
-            task.resume()
+            Task {
+                do {
+                    for try await chunk in stream {
+                        let buffer = req.byteBufferAllocator.buffer(string: chunk)
+                        try await writer.write(.buffer(buffer)).get()
+                    }
+                    _ = try await writer.write(.end).get()
+                } catch {
+                    req.logger.error("OpenAI stream error: \(error)")
+                    let errorBuffer = req.byteBufferAllocator.buffer(string: "\n[Stream Error: \(error.localizedDescription)]")
+                    _ = try await writer.write(.buffer(errorBuffer)).get()
+                    _ = try await writer.write(.end).get()
+                }
+            }
         })
+
         return response
+    }
+    
+    // MARK: - OpenAI Stream Helper
+    
+    private func streamOpenAICall(urlReq: URLRequest) -> AsyncThrowingStream<String, any Error> {
+        AsyncThrowingStream { continuation in
+            let delegate = OpenAIStreamDelegate(continuation: continuation)
+            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            let task = session.dataTask(with: urlReq)
+            
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
+                session.finishTasksAndInvalidate() // Prevent memory leaks on early exit
+            }
+            task.resume()
+        }
     }
 
     // MARK: - Draftly Context-Mapper Demo Endpoint
@@ -89,8 +109,6 @@ struct DemoController {
             throw Abort(.badRequest, reason: "Invalid customer_id format")
         }
 
-        // Wait to stream context from RAGPipeline. We pretend proposalsIndexed is a high number (e.g. 50)
-        // to bypass the cold-start and definitely use the RAG Pipeline for the demo.
         let stream = try await RAGPipeline.shared.generateProposalStream(
             customerId: customerIdStr,
             rfpText: body.rfpText,
@@ -100,20 +118,21 @@ struct DemoController {
         )
 
         let response = Response(status: .ok)
-        response.headers.contentType = HTTPMediaType(type: "text", subType: "plain")
-        response.headers.add(name: "Cache-Control", value: "no-cache")
-        response.headers.add(name: "Connection", value: "keep-alive")
+        response.headers.contentType = .plainText
+        response.headers.replaceOrAdd(name: .cacheControl, value: "no-cache")
+        response.headers.replaceOrAdd(name: .connection, value: "keep-alive")
 
         response.body = .init(stream: { writer in
             Task {
                 do {
                     for try await chunk in stream {
-                        _ = writer.write(.buffer(ByteBuffer(string: chunk)))
+                        let buffer = req.byteBufferAllocator.buffer(string: chunk)
+                        try await writer.write(.buffer(buffer)).get()
                     }
-                    _ = writer.write(.end)
+                    _ = try await writer.write(.end).get()
                 } catch {
                     req.logger.error("Draftly stream error: \(error)")
-                    _ = writer.write(.end)
+                    _ = try await writer.write(.end).get()
                 }
             }
         })
@@ -121,22 +140,26 @@ struct DemoController {
     }
 }
 
+// MARK: - OpenAI Delegate
+
 private final class OpenAIStreamDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
-    let writer: any BodyStreamWriter
+    let continuation: AsyncThrowingStream<String, any Error>.Continuation
     var buffer: String = ""
     var isDone = false
     
-    init(writer: any BodyStreamWriter) {
-        self.writer = writer
+    init(continuation: AsyncThrowingStream<String, any Error>.Continuation) {
+        self.continuation = continuation
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        if let httpRes = response as? HTTPURLResponse, !(200...299).contains(httpRes.statusCode) {
-             _ = writer.write(.buffer(ByteBuffer(string: "Error from OpenAI API: \(httpRes.statusCode)")))
-             _ = writer.write(.end)
-             isDone = true
-             completionHandler(.cancel)
-             return
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            continuation.finish(throwing: NSError(
+                domain: "OpenAIError",
+                code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"]
+            ))
+            completionHandler(.cancel)
+            return
         }
         completionHandler(.allow)
     }
@@ -146,41 +169,43 @@ private final class OpenAIStreamDelegate: NSObject, URLSessionDataDelegate, @unc
         buffer += str
         var lines = buffer.components(separatedBy: .newlines)
         guard !lines.isEmpty else { return }
+        
+        // Keep the last incomplete line in the buffer
         buffer = lines.removeLast()
         
         for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("data: ") else { continue }
-            let jsonStr = String(trimmed.dropFirst(6))
-            guard jsonStr != "[DONE]" else {
-                _ = writer.write(.end)
+            
+            let jsonString = String(trimmed.dropFirst(6)).trimmingCharacters(in: .whitespaces)
+            guard jsonString != "[DONE]" else {
                 isDone = true
+                continuation.finish()
                 return
             }
-            if let data = jsonStr.data(using: .utf8),
+            
+            if let data = jsonString.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let choices = json["choices"] as? [[String: Any]],
                let firstChoice = choices.first,
                let delta = firstChoice["delta"] as? [String: Any],
                let content = delta["content"] as? String {
-                   _ = writer.write(.buffer(ByteBuffer(string: content)))
+                   continuation.yield(content)
             }
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
-        guard !isDone else { return }
+        guard !isDone else {
+            session.finishTasksAndInvalidate()
+            return
+        }
         isDone = true
         if let error = error {
-            let nsError = error as NSError
-            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
-                _ = writer.write(.end)
-            } else {
-                _ = writer.write(.buffer(ByteBuffer(string: "\n[Stream Error: \(error.localizedDescription)]")))
-                _ = writer.write(.end)
-            }
+            continuation.finish(throwing: error)
         } else {
-            _ = writer.write(.end)
+            continuation.finish()
         }
+        session.finishTasksAndInvalidate() // Prevent memory leaks on natural completion
     }
 }

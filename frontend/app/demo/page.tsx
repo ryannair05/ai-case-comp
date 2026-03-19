@@ -142,10 +142,26 @@ async function streamGenericGPT(
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No response body");
   const decoder = new TextDecoder();
+  let fullText = "";
+
+  const readWithTimeout = () => {
+    return Promise.race([
+      reader.read(),
+      new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) =>
+        setTimeout(() => reject(new Error("Stream read timeout")), 10000)
+      )
+    ]);
+  };
+
   while (true) {
-    const { done, value } = await reader.read();
+    const { done, value } = await readWithTimeout();
     if (done) break;
-    onChunk(decoder.decode(value));
+    const chunk = decoder.decode(value);
+    fullText += chunk;
+    onChunk(chunk);
+  }
+  if (!fullText.trim() || fullText.includes("[Stream Error") || fullText.includes("Error from OpenAI API")) {
+    throw new Error("Generic stream failed or returned empty content");
   }
 }
 
@@ -164,10 +180,26 @@ async function streamDraftly(
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No response body");
   const decoder = new TextDecoder();
+  let fullText = "";
+
+  const readWithTimeout = () => {
+    return Promise.race([
+      reader.read(),
+      new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) =>
+        setTimeout(() => reject(new Error("Stream read timeout")), 10000)
+      )
+    ]);
+  };
+
   while (true) {
-    const { done, value } = await reader.read();
+    const { done, value } = await readWithTimeout();
     if (done) break;
-    onChunk(decoder.decode(value));
+    const chunk = decoder.decode(value);
+    fullText += chunk;
+    onChunk(chunk);
+  }
+  if (!fullText.trim() || fullText.includes("[Stream Error")) {
+    throw new Error("Draftly stream failed or returned empty content");
   }
 }
 

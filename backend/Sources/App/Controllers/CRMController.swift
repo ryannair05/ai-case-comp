@@ -27,7 +27,8 @@ struct CRMController {
             + "&redirect_uri=\(redirectURI.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? redirectURI)"
             + "&scope=\(scopes)"
             + "&state=\(state.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? state)"
-        return req.redirect(to: url)
+        let result: [String: String] = ["url": url]
+        return try await result.encodeResponse(for: req)
     }
 
     // MARK: - OAuth callback

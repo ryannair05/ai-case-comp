@@ -19,13 +19,41 @@ struct AnalyticsController {
         let avgDealSize = won.isEmpty ? 0.0 : won.compactMap(\.valueUsd).reduce(0, +) / Double(max(1, won.count))
         let switchingCost = calculateSwitchingCost(customer: customer)
 
+        // Pull aggregate stats so per-customer dashboard shows realistic metrics
+        let allCustomers = try await Customer.query(on: req.db)
+            .filter(\.$status == "active")
+            .all()
+        let totalRevenue = allCustomers.reduce(0.0) { $0 + $1.monthlyRevenue }
+        let churnedCount = allCustomers.filter { $0.churnedThisMonth }.count
+        let churnRate = allCustomers.isEmpty ? 0.0 : Double(churnedCount) / Double(allCustomers.count)
+        let blendedARPA = allCustomers.isEmpty ? 175.0 : totalRevenue / Double(allCustomers.count)
+        let ltv = churnRate > 0 ? min(blendedARPA / churnRate, blendedARPA * 36) : blendedARPA * 36
+        let avgSwitchingCostUsd = Double(allCustomers.map { calculateSwitchingCost(customer: $0)["total_cost"] as? Int ?? 0 }.reduce(0, +))
+            / max(1, Double(allCustomers.count))
+
+        let scenario: String
+        switch churnRate {
+        case ..<0.035: scenario = "bull"
+        case ..<0.055: scenario = "base"
+        default:       scenario = "bear"
+        }
+
         let result: [String: Any] = [
-            "monthly_revenue": customer.monthlyRevenue,
-            "proposals_indexed": customer.proposalsIndexed,
-            "win_rate": winRate,
-            "avg_deal_size_usd": avgDealSize,
-            "switching_cost_usd": switchingCost["total_cost"] ?? 0,
-            "tier": customer.tier,
+            // Per-customer fields
+            "monthly_revenue":       customer.monthlyRevenue,
+            "proposals_indexed":     customer.proposalsIndexed,
+            "win_rate":              winRate,
+            "avg_deal_size_usd":     avgDealSize,
+            "switching_cost_usd":    switchingCost["total_cost"] ?? 0,
+            "tier":                  customer.tier,
+            // Aggregate / financial model fields (shown on dashboard Financial Metrics cards)
+            "monthly_churn_rate":    churnRate,
+            "ltv_usd":               ltv,
+            "blended_arpa_usd":      blendedARPA,
+            "gross_margin":          0.75,
+            "ai_cost_per_proposal":  0.12,
+            "avg_switching_cost_usd": avgSwitchingCostUsd,
+            "on_track_for":          scenario,
         ]
         return try await result.encodeResponse(for: req)
     }
@@ -53,7 +81,7 @@ struct AnalyticsController {
         let avgSwitchingCost = Double(customers.map { calculateSwitchingCost(customer: $0)["total_cost"] as? Int ?? 0 }.reduce(0, +))
             / max(1, Double(customers.count))
 
-        let aiCostPerProposal: Double = 0.18
+        let aiCostPerProposal: Double = 0.12
 
         let scenario: String
         switch churnRate {
@@ -70,7 +98,7 @@ struct AnalyticsController {
             "ltv_usd":                      ltv,
             "cac_usd":                      0.0,
             "ltv_cac_ratio":                "∞",
-            "gross_margin":                 0.72,
+            "gross_margin":                 0.75,
             "ai_cost_per_proposal":         aiCostPerProposal,
             "avg_switching_cost_usd":       avgSwitchingCost,
             "total_mrr":                    totalRevenue,

@@ -30,34 +30,68 @@ function DealCard({
     <div
       draggable
       onDragStart={(e) => onDragStart(e, deal.id)}
-      className="bg-white border rounded-xl p-4 cursor-grab active:cursor-grabbing shadow-sm card-hover select-none"
-      style={{ borderColor: "var(--vellum-border)" }}
+      style={{
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "14px",
+        padding: "16px",
+        cursor: "grab",
+        transition: "all 0.25s",
+        userSelect: "none",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.borderColor = "rgba(99,102,241,0.2)";
+        e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+        e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+      }}
     >
-      <div className="font-semibold text-sm mb-1" style={{ color: "var(--ink-primary)" }}>
+      <div style={{
+        fontSize: "14px", fontWeight: 600,
+        color: "#E2E8F0", marginBottom: "4px",
+        fontFamily: "'Outfit', sans-serif",
+      }}>
         {deal.client_name}
       </div>
       {deal.needs && (
-        <div className="text-xs mb-1 line-clamp-2" style={{ color: "var(--ink-secondary)" }}>
+        <div style={{
+          fontSize: "12px", color: "rgba(148,163,184,0.5)",
+          marginBottom: "8px", lineClamp: 2, display: "-webkit-box", WebkitBoxOrient: "vertical", overflow: "hidden"
+        }}>
           {deal.needs}
         </div>
       )}
-      <div className="flex items-center gap-2 mt-2 flex-wrap">
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px", flexWrap: "wrap" }}>
         {deal.budget && (
-          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
+          <span style={{
+            fontSize: "11px", fontFamily: "'JetBrains Mono', monospace",
+            background: "rgba(99,102,241,0.1)", color: "#818CF8",
+            padding: "2px 8px", borderRadius: "10px", fontWeight: 500,
+          }}>
             {deal.budget}
           </span>
         )}
         {deal.timeline && (
-          <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+          <span style={{ fontSize: "11px", color: "rgba(148,163,184,0.4)" }}>
             {deal.timeline}
           </span>
         )}
       </div>
-      <div className="mt-3">
+      <div style={{ marginTop: "12px" }}>
         <Link
           href={`/proposals/new?clientName=${encodeURIComponent(deal.client_name)}&context=${encodeURIComponent(deal.needs ?? "")}`}
-          className="text-xs font-medium hover:underline"
-          style={{ color: "var(--indigo)" }}
+          style={{
+            fontSize: "12px", fontWeight: 600,
+            color: "#818CF8", textDecoration: "none",
+            fontFamily: "'Outfit', sans-serif",
+            transition: "color 0.2s",
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = "#A5B4FC"}
+          onMouseLeave={e => e.currentTarget.style.color = "#818CF8"}
         >
           Generate Proposal →
         </Link>
@@ -83,11 +117,13 @@ function KanbanColumn({
 
   return (
     <div
-      className="flex flex-col gap-3 min-h-[200px] rounded-xl p-3 transition-colors"
       style={{
-        background: isDragOver ? "rgba(99,102,241,0.04)" : "rgba(0,0,0,0.02)",
-        border: `1px solid ${isDragOver ? "var(--indigo)" : "var(--vellum-border)"}`,
-        minWidth: "200px",
+        display: "flex", flexDirection: "column", gap: "12px",
+        minHeight: "400px", borderRadius: "16px", padding: "16px",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        background: isDragOver ? "rgba(99,102,241,0.05)" : "rgba(255,255,255,0.02)",
+        border: `1px solid ${isDragOver ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.05)"}`,
+        minWidth: "240px",
         flex: 1,
       }}
       onDragOver={(e) => {
@@ -102,28 +138,44 @@ function KanbanColumn({
       }}
     >
       {/* Column header */}
-      <div className="flex items-center gap-2 mb-1 px-1">
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", padding: "0 4px" }}>
         <span
-          className="w-2 h-2 rounded-full flex-shrink-0"
-          style={{ background: stage.color }}
+          style={{ width: "6px", height: "6px", borderRadius: "50%", background: stage.color, boxShadow: `0 0 8px ${stage.color}` }}
         />
-        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--ink-secondary)" }}>
+        <span style={{
+          fontSize: "11px", fontWeight: 600,
+          textTransform: "uppercase", letterSpacing: "0.8px",
+          color: "rgba(148,163,184,0.6)",
+          fontFamily: "'Outfit', sans-serif",
+        }}>
           {stage.label}
         </span>
         <span
-          className="ml-auto text-xs font-mono rounded-full px-1.5 py-0.5"
-          style={{ background: "rgba(0,0,0,0.06)", color: "var(--ink-muted)" }}
+          style={{
+            marginLeft: "auto", fontSize: "11px",
+            fontFamily: "'JetBrains Mono', monospace",
+            background: "rgba(255,255,255,0.04)",
+            color: "rgba(148,163,184,0.4)",
+            padding: "2px 6px", borderRadius: "10px",
+          }}
         >
           {deals.length}
         </span>
       </div>
 
-      {deals.map((deal) => (
-        <DealCard key={deal.id} deal={deal} onDragStart={onDragStart} />
-      ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {deals.map((deal) => (
+          <DealCard key={deal.id} deal={deal} onDragStart={onDragStart} />
+        ))}
+      </div>
 
       {deals.length === 0 && (
-        <div className="flex-1 flex items-center justify-center text-xs" style={{ color: "var(--ink-muted)" }}>
+        <div style={{
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "11px", color: "rgba(148,163,184,0.25)",
+          border: "1px dashed rgba(255,255,255,0.03)",
+          borderRadius: "12px", marginTop: "8px",
+        }}>
           Drop deals here
         </div>
       )}
@@ -183,68 +235,122 @@ export default function GTMPipelinePage() {
     deals.filter((d) => d.stage === stage);
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--vellum)" }}>
-      <AppNav />
+    <>
+      <style>{`
+        @keyframes dashFadeUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: dashFadeUp 0.4s ease both; }
+        .fade-up-1 { animation: dashFadeUp 0.4s 0.1s ease both; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6 fade-up">
-          <div>
-            <h1 className="text-2xl font-bold" style={{ fontFamily: "Fraunces, Georgia, serif" }}>
-              Deal Pipeline
-            </h1>
-            <p className="text-sm mt-1" style={{ color: "var(--ink-secondary)" }}>
-              Drag cards between stages to update deal status.
-            </p>
-          </div>
-          <Link
-            href="/gtm/meeting-signals"
-            className="text-sm font-medium px-4 py-2 rounded-lg text-white transition-colors"
-            style={{ background: "var(--indigo)" }}
-          >
-            + New Signal
-          </Link>
-        </div>
+      <div style={{ minHeight: "100vh", background: "#0B0F1A", fontFamily: "'DM Sans', sans-serif" }}>
+        <AppNav />
 
-        {loading ? (
-          <div className="flex gap-4">
-            {STAGES.map((s) => (
-              <div key={s.id} className="flex-1 h-64 bg-white rounded-xl border animate-pulse" style={{ borderColor: "var(--vellum-border)" }} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {STAGES.map((stage) => (
-              <KanbanColumn
-                key={stage.id}
-                stage={stage}
-                deals={dealsByStage(stage.id)}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onDragStart={handleDragStart}
-              />
-            ))}
-          </div>
-        )}
-
-        {!loading && deals.length === 0 && (
-          <div className="mt-8 text-center py-16 border-2 border-dashed rounded-2xl" style={{ borderColor: "var(--vellum-border)" }}>
-            <div className="text-4xl mb-3">📡</div>
-            <div className="font-semibold mb-1" style={{ fontFamily: "Fraunces, Georgia, serif", color: "var(--ink-primary)" }}>
-              No deals yet
+        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "32px" }} className="fade-up">
+            <div>
+              <h1 style={{
+                fontFamily: "'Outfit', sans-serif", fontSize: "28px",
+                fontWeight: 600, color: "#E2E8F0", margin: 0,
+              }}>
+                Deal Pipeline
+              </h1>
+              <p style={{ fontSize: "14px", color: "rgba(148,163,184,0.5)", marginTop: "4px" }}>
+                Drag cards between stages to update deal status.
+              </p>
             </div>
-            <p className="text-sm mb-4" style={{ color: "var(--ink-secondary)" }}>
-              Extract meeting signals to populate your pipeline.
-            </p>
             <Link
               href="/gtm/meeting-signals"
-              className="text-sm font-medium px-4 py-2 rounded-lg text-white"
-              style={{ background: "var(--indigo)" }}
+              style={{
+                fontSize: "14px", fontWeight: 600,
+                fontFamily: "'Outfit', sans-serif",
+                padding: "10px 24px",
+                borderRadius: "10px",
+                background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+                color: "#fff",
+                textDecoration: "none",
+                transition: "transform 0.15s, box-shadow 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(99,102,241,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
             >
-              Extract Meeting Signals →
+              ✦ New Signal
             </Link>
           </div>
-        )}
+
+          {loading ? (
+            <div style={{ display: "flex", gap: "16px", overflowX: "auto" }} className="no-scrollbar">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} style={{
+                  flex: 1, minHeight: "400px", minWidth: "240px",
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderRadius: "16px",
+                  animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                }} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "24px" }} className="no-scrollbar fade-up-1">
+              {STAGES.map((stage) => (
+                <KanbanColumn
+                  key={stage.id}
+                  stage={stage}
+                  deals={dealsByStage(stage.id)}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragStart={handleDragStart}
+                />
+              ))}
+            </div>
+          )}
+
+          {!loading && deals.length === 0 && (
+            <div style={{
+              marginTop: "32px", textAlign: "center", padding: "64px 0",
+              border: "1.5px dashed rgba(255,255,255,0.06)", borderRadius: "24px",
+              animation: "dashFadeUp 0.4s 0.2s ease both",
+            }}>
+              <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.6 }}>📡</div>
+              <h2 style={{
+                fontFamily: "'Outfit', sans-serif", fontSize: "20px",
+                fontWeight: 600, color: "#E2E8F0", marginBottom: "8px",
+              }}>
+                No deals yet
+              </h2>
+              <p style={{
+                fontSize: "14px", color: "rgba(148,163,184,0.5)",
+                maxWidth: "340px", margin: "0 auto 24px",
+                lineHeight: 1.6,
+              }}>
+                Extract meeting signals to populate your pipeline.
+              </p>
+              <Link
+                href="/gtm/meeting-signals"
+                style={{
+                  display: "inline-block",
+                  fontSize: "14px", fontWeight: 600,
+                  fontFamily: "'Outfit', sans-serif",
+                  padding: "10px 24px",
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+                  color: "#fff",
+                  textDecoration: "none",
+                  transition: "transform 0.15s, box-shadow 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(99,102,241,0.3)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+              >
+                ✦ Extract Meeting Signals
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

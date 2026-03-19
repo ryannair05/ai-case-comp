@@ -12,6 +12,8 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import AppNav from "@/app/components/AppNav";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+
 const PLANS = [
   {
     id: "starter",
@@ -92,11 +94,14 @@ function BillingInner() {
   const handleUpgrade = async (tier: string) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/billing/create-checkout", {
+      const res = await fetch(`${API_BASE}/billing/create-checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tier, email: user?.email }),
       });
+      if (!res.ok) {
+        throw new Error("Checkout failed");
+      }
       const { url } = await res.json() as { url: string };
       window.location.href = url;
     } catch (err) {
@@ -108,11 +113,14 @@ function BillingInner() {
   const handleManage = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/billing/create-portal", {
+      const res = await fetch(`${API_BASE}/billing/create-portal`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: user?.email }),
       });
+      if (!res.ok) {
+        throw new Error("Portal failed");
+      }
       const { url } = await res.json() as { url: string };
       window.location.href = url;
     } catch (err) {
